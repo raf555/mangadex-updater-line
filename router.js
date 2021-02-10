@@ -40,6 +40,9 @@ app.get("/dex.js", function(req, res) {
     }
   }
 });
+app.get("/wake", function(req, res) {
+  res.send({ result: true });
+});
 
 app.use(session(session_options));
 
