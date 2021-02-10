@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta charset="utf-8" />
+      <title>GoblokBot 1991</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <link
+         rel="icon"
+         href="https://mangadex.org/favicon-192x192.png?1"
+         type="image/png"
+         />
+      <script
+         src="https://code.jquery.com/jquery-3.5.1.min.js"
+         crossorigin="anonymous"
+         ></script>
+      <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+      <link
+         rel="stylesheet"
+         href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css"
+         />
+      <style type="text/css">
+         body {
+         background-color: #FFFFFF;
+         }
+         .ui.menu .item img.logo {
+         margin-right: 1.5em;
+         }
+         .main.container {
+         margin-top: 7em;
+         }
+         .wireframe {
+         margin-top: 2em;
+         }
+         .ui.footer.segment {
+         margin: 5em 0em 0em;
+         padding: 5em 0em;
+         }
+      </style>
+      <%- include('global/https')-%>
+      <script>
+         jQuery(document).ready(function() {
+           $('#kuota').progress({text: {
+              active  : '{value} / {total}'
+            }});
+         });
+      </script>
+   </head>
+   <body>
+      <%- include('global/menu')-%>
+      <div class="pusher">
+         <div class="ui main text container">
+            <div class="ui breadcrumb">
+               <a class="section" href="/">Home</a>
+               <div class="divider">/</div>
+            </div>
+            <div class="ui divider"></div>
+            <h2 class="ui header">
+               Halo admin
+            </h2>
+            <div class="ui divider"></div>
+            <h2 class="ui header">
+               <i class="power off icon"></i>
+               <div class="content">
+                  Push Messages Quota
+                  <div class="sub header">There is limit for everything.</div>
+               </div>
+            </h2>
+           <div class="ui indicating progress" data-value="<%= kuota %>" data-total="500" id="kuota">
+              <div class="bar"></div>
+              <div class="label"></div>
+            </div>
+            <div class="ui divider"></div>
+            <h2 class="ui header">
+               <i class="thumbs up outline icon"></i>
+               <div class="content">
+                  Active User(s)
+                  <div class="sub header">User that has manga followed with this bot.</div>
+               </div>
+            </h2><center>
+           <h3 class="ui header">
+                     <i class="user icon"></i>
+                     <div class="content">
+                       <%= user %>
+                     </div>
+           </h3></center>
+           <div class="ui divider"></div>
+         </div>
+         <%- include('global/footer')-%>
+      </div>
+   </body>
+</html>

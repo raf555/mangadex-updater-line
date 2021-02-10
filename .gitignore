@@ -1,0 +1,6 @@
+## database
+db/
+
+## dex.js
+public/static/dex_beauty.js
+public/static/dex_alter.js
