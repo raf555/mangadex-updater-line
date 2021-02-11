@@ -125,10 +125,14 @@ async function parse(event) {
 
   try {
     let userdata = await client.getProfile(event.source.userId);
-    userdb.set(userdata.userId + ".name", userdata.displayName);
-    userdb.set(userdata.userId + ".pic", userdata.pictureUrl);
-    userdb.save();
-    added = true;
+    // for now, limit total user that can be registered
+    let userlimit = 15;
+    if (Object.keys(userdb.get()).length <= userlimit) {
+      userdb.set(userdata.userId + ".name", userdata.displayName);
+      userdb.set(userdata.userId + ".pic", userdata.pictureUrl);
+      userdb.save();
+      added = true;
+    }
   } catch (e) {
     added = false;
   }
