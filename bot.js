@@ -172,7 +172,19 @@ function edit(event) {
   return reply(event, {
     type: "flex",
     altText: "Edit Manga",
-    contents: bubble
+    contents: bubble,
+    quickReply: {
+      items: [
+        {
+          type: "action",
+          action: {
+            type: "message",
+            label: "List",
+            text: "!dex"
+          }
+        }
+      ]
+    }
   });
 }
 
@@ -259,6 +271,18 @@ async function dex(event, pushh) {
         sender: {
           name: "MangaDex Update",
           iconUrl: "https://mangadex.org/favicon-192x192.png"
+        },
+        quickReply: {
+          items: [
+            {
+              type: "action",
+              action: {
+                type: "message",
+                label: "Edit",
+                text: "!edit"
+              }
+            }
+          ]
         }
       });
     } else {
@@ -308,7 +332,7 @@ async function dex(event, pushh) {
         } else {
           return push(userdata[k], {
             type: "flex",
-            altText: "Mangadex Update - "+alttext,
+            altText: "Mangadex Update - " + alttext,
             contents: carousel,
             sender: {
               name: "MangaDex Update",
@@ -316,6 +340,14 @@ async function dex(event, pushh) {
             },
             quickReply: {
               items: [
+                {
+                  type: "action",
+                  action: {
+                    type: "message",
+                    label: "List",
+                    text: "!dex"
+                  }
+                },
                 {
                   type: "action",
                   action: {
