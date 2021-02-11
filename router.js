@@ -181,7 +181,7 @@ app.get("/dex", function(req, res) {
                 }
                 searchu += searchout(search, false, ada);
               } catch (e) {
-                searchu = "Failed to get manga data, please refresh the page";
+                searchu = "";
               }
             }
             if (searchu == "") {
