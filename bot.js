@@ -87,9 +87,10 @@ function followevent(event) {
     text:
       "Welcome to (Unofficial) Mangadex Notifier for LINE!\n\n" +
       "Available command: \n" +
-      "!dex => to open your following list latest chapter update\n" +
-      "!dex manga_name => to open your following list with manga name(e.g. !dex kubo-san)\n" +
-      "!edit => to edit and see your following list\n\n" +
+      "• !dex\n=> to open your following list latest chapter update.\n" +
+      "• !dex manga_name\n=> to open your following list with manga name (e.g. !dex kubo-san).\n" +
+      "• !dex manga_name -chapter num\n=> to open your following list with manga name and certain chapter (e.g. !dex kubo-san -chapter 20).\n\n" +
+      "• !edit\n=> to edit and see your following list.\n\n" +
       "If you find any problem, please make an issue at https://github.com/raf555/mangadex-updater-line",
     quickReply: {
       items: [
@@ -241,6 +242,7 @@ async function dex(event, pushh) {
     if (_user.get(event.source.userId)) {
       let usermanga = Object.keys(_user.get(event.source.userId));
       let param = getparam(event.message.text);
+      let regex;
       for (let i = 0; i < feed.length; i++) {
         if (carousel.contents.length == 12) {
           break;
@@ -251,11 +253,19 @@ async function dex(event, pushh) {
         for (let j = 0; j < usermanga.length; j++) {
           if (parseInt(usermanga[j]) == mangid) {
             if (param != "") {
-              let regex = new RegExp(param, "i");
-              if (feed[i].title.match(regex)) {
-                let bubble = createdexbubble(feed[i]);
-                carousel.contents.push(bubble);
-                break;
+              regex = parseparam(param);
+              if (regex.name.test(feed[i].title)) {
+                if (regex.chap) {
+                  if (regex.chap.test(feed[i].title)) {
+                    let bubble = createdexbubble(feed[i]);
+                    carousel.contents.push(bubble);
+                    break;
+                  }
+                } else {
+                  let bubble = createdexbubble(feed[i]);
+                  carousel.contents.push(bubble);
+                  break;
+                }
               }
             } else {
               let bubble = createdexbubble(feed[i]);
@@ -269,12 +279,29 @@ async function dex(event, pushh) {
       //console.log(JSON.stringify(carousel));
 
       if (carousel.contents.length == 0) {
+        let out;
+        if (regex.name) {
+          if (regex.chap) {
+            param = param.split(" -chapter ");
+            out =
+              "There is no manga that match with 「" +
+              param[0] +
+              "」 and chapter " +
+              param[1].trim() +
+              " in your following list.";
+          } else {
+            out =
+              "There is no manga that match with 「" +
+              param +
+              "」 in your following list.";
+          }
+        } else {
+          out =
+            "You haven't followed any manga or there is no update based on your following list.";
+        }
         return reply(event, {
           type: "text",
-          text:
-            param != ""
-              ? "There is no manga that match with 「" + param + "」 in your following list."
-              : "You haven't followed any manga or there is no update based on your following list."
+          text: out
         });
       }
 
@@ -530,6 +557,19 @@ function getparam(text) {
     h += msg[i] + " ";
   }
   return h.split(" ") ? h.slice(0, -1) : h;
+}
+
+function parseparam(param) {
+  let parse = param.split(" -chapter ");
+  let regex = {
+    name: null,
+    chap: null
+  };
+  regex.name = new RegExp(parse[0], "i");
+  if (parse.length > 1) {
+    regex.chap = new RegExp("chapter " + parse[1].trim(), "i");
+  }
+  return regex;
 }
 
 // convert timezone
