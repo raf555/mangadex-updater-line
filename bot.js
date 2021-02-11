@@ -118,13 +118,13 @@ async function parse(event) {
   let sign = text[0];
   let cmd = text.toLowerCase().substring(1);
   let added = false;
-  let userdb = editJsonFile("db/user.json")
-  
+  let userdb = editJsonFile("db/user.json");
+
   try {
     let userdata = await client.getProfile(event.source.userId);
-    userdb.set(userdata.userId+".name", userdata.displayName);
-    userdb.set(userdata.userId+".pic", userdata.pictureUrl);
-    userdb.save()
+    userdb.set(userdata.userId + ".name", userdata.displayName);
+    userdb.set(userdata.userId + ".pic", userdata.pictureUrl);
+    userdb.save();
     added = true;
   } catch (e) {
     added = false;
@@ -272,6 +272,7 @@ async function dex(event, pushh) {
       feed[0].mangaLink.split("/").length - 1
     ];
     let user = _manga.get(apdetid + ".follower");
+    let alttext = "";
 
     if (user) {
       let userdata = Object.keys(user);
@@ -288,11 +289,15 @@ async function dex(event, pushh) {
             if (parseInt(usermanga[j]) == mangid) {
               let bubble = createdexbubble(feed[i]);
               carousel.contents.push(bubble);
+              alttext = feed[i].title;
               break;
             }
           }
+
+          break; // show only one bubble when update
         }
-        carousel.contents.push(editb);
+
+        //carousel.contents.push(editb);
 
         if (carousel.contents.length == 0) {
           return push(userdata[k], {
@@ -303,11 +308,23 @@ async function dex(event, pushh) {
         } else {
           return push(userdata[k], {
             type: "flex",
-            altText: "Mangadex Update",
+            altText: "Mangadex Update - "+alttext,
             contents: carousel,
             sender: {
               name: "MangaDex Update",
               iconUrl: "https://mangadex.org/favicon-192x192.png"
+            },
+            quickReply: {
+              items: [
+                {
+                  type: "action",
+                  action: {
+                    type: "message",
+                    label: "Edit",
+                    text: "!edit"
+                  }
+                }
+              ]
             }
           });
         }
