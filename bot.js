@@ -88,6 +88,7 @@ function followevent(event) {
       "Welcome to (Unofficial) Mangadex Notifier for LINE!\n\n" +
       "Available command: \n" +
       "!dex => to open your following list latest chapter update\n" +
+      "!dex manga_name => to open your following list with manga name(e.g. !dex kubo-san)\n" +
       "!edit => to edit and see your following list\n\n" +
       "If you find any problem, please make an issue at https://github.com/raf555/mangadex-updater-line",
     quickReply: {
@@ -114,7 +115,8 @@ function followevent(event) {
 }
 
 async function parse(event) {
-  let text = event.message.text;
+  let textarr = event.message.text.split(" ");
+  let text = textarr[0];
   let sign = text[0];
   let cmd = text.toLowerCase().substring(1);
   let added = false;
@@ -238,6 +240,7 @@ async function dex(event, pushh) {
   if (!pushh) {
     if (_user.get(event.source.userId)) {
       let usermanga = Object.keys(_user.get(event.source.userId));
+      let param = getparam(event.message.text);
       for (let i = 0; i < feed.length; i++) {
         if (carousel.contents.length == 12) {
           break;
@@ -247,9 +250,18 @@ async function dex(event, pushh) {
         ];
         for (let j = 0; j < usermanga.length; j++) {
           if (parseInt(usermanga[j]) == mangid) {
-            let bubble = createdexbubble(feed[i]);
-            carousel.contents.push(bubble);
-            break;
+            if (param != "") {
+              let regex = new RegExp(param, "i");
+              if (feed[i].title.match(regex)) {
+                let bubble = createdexbubble(feed[i]);
+                carousel.contents.push(bubble);
+                break;
+              }
+            } else {
+              let bubble = createdexbubble(feed[i]);
+              carousel.contents.push(bubble);
+              break;
+            }
           }
         }
       }
@@ -260,7 +272,9 @@ async function dex(event, pushh) {
         return reply(event, {
           type: "text",
           text:
-            "You haven't followed any manga or there is no update based on your following list."
+            param != ""
+              ? "There is no manga that match with 「" + param + "」 in your following list."
+              : "You haven't followed any manga or there is no update based on your following list."
         });
       }
 
@@ -507,6 +521,15 @@ function createdexbubble(data) {
       }
     }
   };
+}
+
+function getparam(text) {
+  let msg = text.split(" ");
+  let h = "";
+  for (let i = 1; i < msg.length; i++) {
+    h += msg[i] + " ";
+  }
+  return h.split(" ") ? h.slice(0, -1) : h;
 }
 
 // convert timezone
