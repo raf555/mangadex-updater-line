@@ -239,7 +239,7 @@ async function dex(event, pushh) {
     if (_user.get(event.source.userId)) {
       let usermanga = Object.keys(_user.get(event.source.userId));
       for (let i = 0; i < feed.length; i++) {
-        if (carousel.contents.length == 11) {
+        if (carousel.contents.length == 12) {
           break;
         }
         let mangid = feed[i].mangaLink.split("/")[
@@ -253,7 +253,7 @@ async function dex(event, pushh) {
           }
         }
       }
-      carousel.contents.push(editb);
+      //carousel.contents.push(editb);
       //console.log(JSON.stringify(carousel));
 
       if (carousel.contents.length == 0) {
@@ -320,7 +320,6 @@ async function dex(event, pushh) {
 
           break; // show only one bubble when update
         }
-
         //carousel.contents.push(editb);
 
         if (carousel.contents.length == 0) {
