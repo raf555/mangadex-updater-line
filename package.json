@@ -15,9 +15,10 @@
     "ejs": "^3.1.6",
     "axios": "^0.21.1",
     "edit-json-file": "^1.4.1",
-    "mangadex-api": "^4.6.2",
+    "mangadex-api": "^4.6.3",
     "fast-xml-parser": "^3.17.5",
-    "node-cron": "^2.0.3"
+    "node-cron": "^2.0.3",
+    "node-cache": "^5.1.2"
   },
   "engines": {
     "node": "12.x"

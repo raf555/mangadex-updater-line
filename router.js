@@ -15,7 +15,9 @@ const express = require("express"),
     channelAccessToken: process.env.acc_token,
     channelSecret: process.env.acc_secret
   },
-  client = new line.Client(config);
+  client = new line.Client(config),
+  NodeCache = require("node-cache"),
+  myCache = new NodeCache({ stdTTL: 86400 });
 
 const login = new line_login({
   channel_id: process.env.acc_id,
@@ -25,6 +27,8 @@ const login = new line_login({
   //prompt: "consent",
   bot_prompt: "normal"
 });
+
+const mclient = new Mangadex();
 
 // manga limit
 let limit = 10;
@@ -119,7 +123,6 @@ app.get("/dex", function(req, res) {
     .verify_access_token(req.session.acc_token)
     .then(result => {
       (async () => {
-        const mclient = new Mangadex();
         let searchu = "";
         let uid = req.session.uid;
         let _manga = editJsonFile("db/_dexmanga.json");
@@ -151,10 +154,7 @@ app.get("/dex", function(req, res) {
             let search;
             if (isNaN(req.query.q)) {
               // search result
-              search = await mclient.search({
-                title: req.query.q,
-                with_hentai: false
-              });
+              search = await getsearch(req.query.q);
               // max search
               let byk = 5;
               let len = search.titles.length < byk ? search.titles.length : byk;
@@ -172,14 +172,16 @@ app.get("/dex", function(req, res) {
             } else {
               try {
                 search = await getmanga(req.query.q);
-                let ada = false;
-                if (
-                  _manga.get(req.query.q + ".follower." + uid) &&
-                  _user.get(uid + "." + req.query.q)
-                ) {
-                  ada = true;
+                if (!search.isHentai) {
+                  let ada = false;
+                  if (
+                    _manga.get(req.query.q + ".follower." + uid) &&
+                    _user.get(uid + "." + req.query.q)
+                  ) {
+                    ada = true;
+                  }
+                  searchu += searchout(search, false, ada);
                 }
-                searchu += searchout(search, false, ada);
               } catch (e) {
                 searchu = "";
               }
@@ -248,7 +250,6 @@ app.get("/api/dex/folunfol/:id", function(req, res) {
       return false;
     }
     var searchu = "";
-    const mclient = new Mangadex();
     if (req.params.id) {
       var id = parseInt(req.params.id);
 
@@ -310,9 +311,10 @@ app.get("/api/dex/folunfol/:id", function(req, res) {
 function searchout(search, fromgetmanga = true, ada) {
   let trimString = function(string, length) {
     return string.length > length
-      ? string.substring(0, length) + "..."
+      ? string.substring(0, length) + "... "
       : string;
   };
+
   let out =
     '<div class="item">' +
     '<div class="image">' +
@@ -340,7 +342,7 @@ function searchout(search, fromgetmanga = true, ada) {
     "<p>" +
     trimString(search.description, 400) +
     (search.description.length >= 400
-      ? ' <a href="https://mangadex.org/title/' +
+      ? '<a href="https://mangadex.org/title/' +
         search.id +
         '" target="_blank">See more</a>'
       : "") +
@@ -402,7 +404,14 @@ function folmanga(id) {
   );
 }
 
-async function getmanga(id) {
+async function getmanga(id, fromcache = true) {
+  if (fromcache) {
+    if (myCache.has("manga-" + id)) {
+      let out = myCache.get("manga-" + id);
+      //out.cache = true;
+      return out;
+    }
+  }
   let data = await axios.get("https://api.mangadex.org/v2/manga/" + id, {
     headers: {
       Cookie: process.env.dex_cookies,
@@ -411,12 +420,31 @@ async function getmanga(id) {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
     }
   });
+  myCache.set("manga-" + id, data.data.data);
   return data.data.data;
+}
+
+async function getsearch(q, fromcache = true) {
+  if (fromcache) {
+    if (myCache.has("search-" + q)) {
+      let out = myCache.get("search-" + q);
+      //out.cache = true;
+      return out;
+    }
+  }
+  let search = await mclient.search({
+    title: q,
+    with_hentai: false
+  });
+  myCache.set("search-" + q, search);
+  return search;
 }
 
 async function ambilfollow() {
   let tes = await axios.get(
-    "https://api.mangadex.org/v2/user/2679586/followed-manga",
+    "https://api.mangadex.org/v2/user/" +
+      process.env.dex_uid +
+      "/followed-manga",
     {
       headers: {
         Cookie: process.env.dex_cookies,

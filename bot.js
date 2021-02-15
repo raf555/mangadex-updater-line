@@ -50,7 +50,7 @@ async function handleEvent(event) {
     case "follow":
       return followevent(event);
     case "message":
-      return event.message.text ? parse(event) : false;
+      return event.message.text ? parse(event) : Promise.resolve(null);
   }
 }
 
@@ -58,7 +58,7 @@ function reply(event, message) {
   try {
     return client.replyMessage(event.replyToken, message);
   } catch (e) {
-    return false;
+    return Promise.resolve(null);
   }
 }
 
@@ -77,11 +77,12 @@ async function push(id, message) {
 
     return push;
   } catch (e) {
-    return false;
+    return Promise.resolve(null);
   }
 }
 
-function followevent(event) {
+async function followevent(event) {
+  await isadded(event);
   return reply(event, {
     type: "text",
     text:
@@ -90,6 +91,9 @@ function followevent(event) {
       "• !dex\n=> to open your following list latest chapter update.\n" +
       "• !dex manga_name\n=> to open your following list with manga name (e.g. !dex kubo-san).\n" +
       "• !dex manga_name -chapter num\n=> to open your following list with manga name and certain chapter (e.g. !dex kubo-san -chapter 20).\n\n" +
+      (event.source.userId == process.env.admin_id
+        ? "• !dex2\n=> to see all following list in the account.\n\n"
+        : "") +
       "• !edit\n=> to edit and see your following list.\n\n" +
       "If you find any problem, please make an issue at https://github.com/raf555/mangadex-updater-line",
     quickReply: {
@@ -120,9 +124,34 @@ async function parse(event) {
   let text = textarr[0];
   let sign = text[0];
   let cmd = text.toLowerCase().substring(1);
-  let added = false;
-  let userdb = editJsonFile("db/user.json");
+  let added = isadded(event);
 
+  if (sign == "!") {
+    if (added) {
+      switch (cmd) {
+        case "dex":
+          return dex(event);
+        case "dex2":
+          return event.source.userId == process.env.admin_id
+            ? dex(event, null, true)
+            : Promise.resolve(null);
+        case "edit":
+          return edit(event);
+        default:
+          return Promise.resolve(null);
+      }
+    } else {
+      return reply(event, {
+        type: "text",
+        text: "You haven't added bot yet, please add bot first."
+      });
+    }
+  }
+}
+
+async function isadded(event) {
+  let userdb = editJsonFile("db/user.json");
+  let added = false;
   try {
     let userdata = await client.getProfile(event.source.userId);
     // for now, limit total user that can be registered
@@ -137,23 +166,7 @@ async function parse(event) {
     added = false;
   }
 
-  if (sign == "!") {
-    if (added) {
-      switch (cmd) {
-        case "dex":
-          return dex(event);
-        case "edit":
-          return edit(event);
-        default:
-          return;
-      }
-    } else {
-      return reply(event, {
-        type: "text",
-        text: "You haven't added bot yet, please add bot first."
-      });
-    }
-  }
+  return added;
 }
 
 function edit(event) {
@@ -195,7 +208,7 @@ function edit(event) {
   });
 }
 
-async function dex(event, pushh) {
+async function dex(event, pushh, all) {
   // MANGADEX
 
   // database
@@ -251,30 +264,50 @@ async function dex(event, pushh) {
         if (carousel.contents.length == 12) {
           break;
         }
-        let mangid = feed[i].mangaLink.split("/")[
-          feed[i].mangaLink.split("/").length - 1
-        ];
-        for (let j = 0; j < usermanga.length; j++) {
-          if (parseInt(usermanga[j]) == mangid) {
-            if (param != "") {
-              regex = parseparam(param);
-              if (regex.name.test(feed[i].title)) {
-                if (regex.chap) {
-                  if (regex.chap.test(feed[i].title)) {
+        if (all) {
+          if (param != "") {
+            regex = parseparam(param);
+            if (regex.name.test(feed[i].title)) {
+              if (regex.chap) {
+                if (regex.chap.test(feed[i].title)) {
+                  let bubble = createdexbubble(feed[i]);
+                  carousel.contents.push(bubble);
+                }
+              } else {
+                let bubble = createdexbubble(feed[i]);
+                carousel.contents.push(bubble);
+              }
+            }
+          } else {
+            let bubble = createdexbubble(feed[i]);
+            carousel.contents.push(bubble);
+          }
+        } else {
+          let mangid = feed[i].mangaLink.split("/")[
+            feed[i].mangaLink.split("/").length - 1
+          ];
+          for (let j = 0; j < usermanga.length; j++) {
+            if (parseInt(usermanga[j]) == mangid) {
+              if (param != "") {
+                regex = parseparam(param);
+                if (regex.name.test(feed[i].title)) {
+                  if (regex.chap) {
+                    if (regex.chap.test(feed[i].title)) {
+                      let bubble = createdexbubble(feed[i]);
+                      carousel.contents.push(bubble);
+                      break;
+                    }
+                  } else {
                     let bubble = createdexbubble(feed[i]);
                     carousel.contents.push(bubble);
                     break;
                   }
-                } else {
-                  let bubble = createdexbubble(feed[i]);
-                  carousel.contents.push(bubble);
-                  break;
                 }
+              } else {
+                let bubble = createdexbubble(feed[i]);
+                carousel.contents.push(bubble);
+                break;
               }
-            } else {
-              let bubble = createdexbubble(feed[i]);
-              carousel.contents.push(bubble);
-              break;
             }
           }
         }
@@ -571,7 +604,7 @@ function parseparam(param) {
   };
   regex.name = new RegExp(parse[0], "i");
   if (parse.length > 1) {
-    regex.chap = new RegExp("chapter " + parse[1].trim(), "i");
+    regex.chap = new RegExp("chapter " + parse[1].trim() + "$", "i");
   }
   return regex;
 }
