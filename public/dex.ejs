@@ -43,7 +43,7 @@
       <script src="/dex.js"></script>
    </head>
    <body>
-      <div class="ui basic modal">
+      <div class="ui basic modal" id="maxinfo">
          <div class="ui icon header">
             <i class="ban icon"></i>
             Only allowed <%= limit %> titles per-user!
@@ -54,6 +54,28 @@
                Close
             </div>
          </div>
+      </div>
+     <div class="ui tiny modal" id="info">
+        <div class="header">Mangadex Update Notifier LINE Bot</div>
+       <i class="close icon"></i>
+        <div class="content">
+            <p>(Unofficial) Mangadex update notifier for LINE.
+            Follow a manga and get notified every time there is an update on Mangadex!</p>
+            <h2 id="how-to-use">How to use</h2>
+            <ol>
+            <li>Add bot by clicking <a href="https://line.me/R/ti/p/@228kmsfw">this</a> link.</li>
+            <li>Start following a manga!</li>
+            </ol>
+            <h2 id="information">Information</h2>
+            <ol>
+            <li>This bot only sends manga update with English language.</li>
+            <li>Bot (should) checks update every one minute.</li>
+            <li>If bot keep sending you a same update, it is a most likely that MangaDex itself is experiencing an issue, please bear with it for a moment (you can mute bot until it solves).</li>
+            <li>If you think there is an update but bot does not send a any update, there is a high chance that Push Messages Quota is exceeded, LINE limits the push quota only 500 for each month.</li>
+            <li>If you find any problem, please make an issue <a href="https://github.com/raf555/mangadex-updater-line" target="_blank">here</a>.</li>
+            </ol>
+          </p>
+        </div>
       </div>
       <%- include('global/menu')-%>
       <div class="pusher">
@@ -68,6 +90,7 @@
                <i class="book icon"></i>
                <div class="content">
                   Mangadex Update Notifier
+                 <small><a class="ui black circular label" style="font-size:10px;" title="What is this?" onclick="$('#info').modal('show')">?</a></small>
                   <div class="sub header">Customize your manga following list and get message every time there is an update!
                      <br><small>Send <b>!dex</b> to bot via personal chat to see your following list update.</small>
                   </div>

@@ -4,3 +4,8 @@ db/
 ## dex.js
 public/static/dex_beauty.js
 public/static/dex_alter.js
+
+## from glitch
+package-lock.json
+shrinkwrap.yaml
+.glitch-assets
