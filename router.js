@@ -138,11 +138,20 @@ app.get("/dex", function(req, res) {
         }
         if (add) {
           // login
-          await mclient.agent.login(
-            process.env.dex_id,
-            process.env.dex_pw,
-            false
-          );
+          try {
+            await mclient.agent.login(
+              process.env.dex_id,
+              process.env.dex_pw,
+              false
+            );
+          } catch (e) {
+            res.send(
+              '<center><h2>Failed to login to <a href="https://mangadex.org" target="_blank">Mangadex</a></h2><br><br>' +
+                '<a class="twitter-timeline" data-width="500" data-height="500" data-theme="dark" href="https://twitter.com/MangaDex?ref_src=twsrc%5Etfw">Tweets by MangaDex</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>' +
+                "</center>"
+            );
+            return false;
+          }
 
           // if there is search param
           if (
@@ -154,20 +163,25 @@ app.get("/dex", function(req, res) {
             let search;
             if (isNaN(req.query.q)) {
               // search result
-              search = await getsearch(req.query.q);
-              // max search
-              let byk = 5;
-              let len = search.titles.length < byk ? search.titles.length : byk;
-              for (let i = 0; i < len; i++) {
-                let ada = false;
-                if (
-                  _manga.get(search.titles[i].id + ".follower." + uid) &&
-                  _user.get(uid + "." + search.titles[i].id)
-                ) {
-                  ada = true;
-                }
+              try {
+                search = await getsearch(req.query.q);
+                // max search
+                let byk = 5;
+                let len =
+                  search.titles.length < byk ? search.titles.length : byk;
+                for (let i = 0; i < len; i++) {
+                  let ada = false;
+                  if (
+                    _manga.get(search.titles[i].id + ".follower." + uid) &&
+                    _user.get(uid + "." + search.titles[i].id)
+                  ) {
+                    ada = true;
+                  }
 
-                searchu += searchout(search.titles[i], false, ada);
+                  searchu += searchout(search.titles[i], false, ada);
+                }
+              } catch (e) {
+                searchu = "Failed to search manga..";
               }
             } else {
               try {
@@ -183,7 +197,11 @@ app.get("/dex", function(req, res) {
                   searchu += searchout(search, false, ada);
                 }
               } catch (e) {
-                searchu = "";
+                if (e.response.status == 404) {
+                  searchu = "";
+                } else {
+                  searchu = "Failed to get manga data..";
+                }
               }
             }
             if (searchu == "") {
@@ -199,7 +217,7 @@ app.get("/dex", function(req, res) {
                   search = await getmanga(data[i]);
                   searchu += searchout(search);
                 } catch (e) {
-                  searchu = "Failed to get manga data, please refresh the page";
+                  searchu = "Failed to get manga data..";
                   break;
                 }
               }
@@ -253,9 +271,6 @@ app.get("/api/dex/folunfol/:id", function(req, res) {
     if (req.params.id) {
       var id = parseInt(req.params.id);
 
-      // login
-      await mclient.agent.login(process.env.dex_id, process.env.dex_pw, false);
-
       // db
       let _manga = editJsonFile("db/_dexmanga.json");
       let _user = editJsonFile("db/_dexuser.json");
@@ -264,7 +279,7 @@ app.get("/api/dex/folunfol/:id", function(req, res) {
       let baru = false; // type
 
       if (isNaN(req.params.id) || req.params.id.match(/\./g)) {
-        res.send({ result: false, reason: "invalid parameter" });
+        res.send({ result: false, reason: "invalid argument" });
         return false;
       }
 
@@ -274,17 +289,35 @@ app.get("/api/dex/folunfol/:id", function(req, res) {
         // unfollow a manga
         _user.unset(uid + "." + id);
         _manga.unset(id + ".follower." + uid);
-        _manga.save();
-        _user.save();
 
         if (Object.keys(_manga.get(id + ".follower")).length - 1 <= 0) {
-          await unfolmanga(id);
+          try {
+            await unfolmanga(id);
+          } catch (e) {
+            res.send({ result: false, reason: "Unknown error occured" });
+            return false;
+          }
         }
+        
+        _manga.save();
+        _user.save();
         res.send({ result: true, type: baru });
       } else {
         if (_user.get(uid) && Object.keys(_user.get(uid)).length >= limit) {
           res.send({ result: false, reason: "max" });
           return false;
+        }
+
+        try {
+          await getmanga(id);
+        } catch (e) {
+          if (e.response.status == 404) {
+            res.send({
+              result: false,
+              reason: "Manga with such id is not found."
+            });
+            return false;
+          }
         }
 
         try {

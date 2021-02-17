@@ -22,8 +22,12 @@ app.post("/callback", line.middleware(config), (req, res) => {
 });
 
 // check manga every minute
-cron.schedule("* * * * *", () => {
-  getUpdate();
+cron.schedule("* * * * *", async () => {
+  try {
+    await getUpdate();
+  } catch (e) {
+    console.log("Failed to fetch data from mangadex");
+  }
 });
 
 // check dex update
@@ -252,8 +256,17 @@ async function dex(event, pushh, all) {
   };
 
   // dex rss
-  let data = await axios.get(process.env.rss_url);
-  let feed = xmlparser.parse(data.data).rss.channel.item;
+  let data;
+  let feed;
+  try {
+    data = await axios.get(process.env.rss_url);
+    feed = xmlparser.parse(data.data).rss.channel.item;
+  } catch (e) {
+    return reply(event, {
+      type: "text",
+      text: "Failed to fetch data from mangadex.."
+    });
+  }
 
   if (!pushh) {
     if (_user.get(event.source.userId)) {
@@ -462,6 +475,8 @@ function createdexbubble(data) {
   regex = /Language: ([\d\D]*)/gi;
   lang = regex.exec(lang)[1];
 
+  let mangaurl = data.mangaLink;
+
   return {
     type: "bubble",
     size: "micro",
@@ -474,7 +489,12 @@ function createdexbubble(data) {
           text: "" + title,
           weight: "bold",
           size: "sm",
-          wrap: true
+          wrap: true,
+          action: {
+            type: "uri",
+            label: "open",
+            uri: "" + mangaurl
+          }
         },
         {
           type: "text",
