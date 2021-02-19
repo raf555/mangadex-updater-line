@@ -1,17 +1,18 @@
 const express = require("express"),
   app = express.Router(),
   line = require("@line/bot-sdk"),
-  config = {
-    channelAccessToken: process.env.acc_token,
-    channelSecret: process.env.acc_secret
-  },
-  client = new line.Client(config),
   xmlparser = require("fast-xml-parser"),
   editJsonFile = require("edit-json-file"),
   axios = require("axios"),
   { Mangadex } = require("mangadex-api"),
-  mclient = new Mangadex(),
   cron = require("node-cron");
+
+const config = {
+    channelAccessToken: process.env.acc_token,
+    channelSecret: process.env.acc_secret
+  },
+  client = new line.Client(config),
+  mclient = new Mangadex();
 
 app.post("/callback", line.middleware(config), (req, res) => {
   Promise.all(req.body.events.map(handleEvent))
@@ -258,6 +259,7 @@ async function dex(event, pushh, all) {
   // dex rss
   let data;
   let feed;
+  
   try {
     data = await axios.get(process.env.rss_url);
     feed = xmlparser.parse(data.data).rss.channel.item;
