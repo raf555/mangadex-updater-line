@@ -1,37 +1,35 @@
 const express = require("express"),
-  app = express.Router(),
   line_login = require("line-login"),
   session = require("express-session"),
+  editJsonFile = require("edit-json-file"),
+  { Mangadex } = require("mangadex-api"),
+  line = require("@line/bot-sdk"),
+  axios = require("axios"),
+  NodeCache = require("node-cache");
+
+const app = express.Router(),
   session_options = {
     secret: process.env.login_secret,
     resave: false,
     saveUninitialized: false
   },
-  editJsonFile = require("edit-json-file"),
-  { Mangadex } = require("mangadex-api"),
-  line = require("@line/bot-sdk"),
-  axios = require("axios"),
   config = {
     channelAccessToken: process.env.acc_token,
     channelSecret: process.env.acc_secret
   },
   client = new line.Client(config),
-  NodeCache = require("node-cache"),
-  myCache = new NodeCache({ stdTTL: 86400 });
+  myCache = new NodeCache({ stdTTL: 86400 }),
+  login = new line_login({
+    channel_id: process.env.acc_id,
+    channel_secret: process.env.login_secret,
+    callback_url: process.env.login_callback,
+    scope: "openid profile",
+    //prompt: "consent",
+    bot_prompt: "normal"
+  }),
+  mclient = new Mangadex();
 
-const login = new line_login({
-  channel_id: process.env.acc_id,
-  channel_secret: process.env.login_secret,
-  callback_url: process.env.login_callback,
-  scope: "openid profile",
-  //prompt: "consent",
-  bot_prompt: "normal"
-});
-
-const mclient = new Mangadex();
-
-// manga limit
-let limit = 10;
+app.use(session(session_options));
 
 app.get("/dex.js", function(req, res) {
   if (!req.get("referer")) {
@@ -44,11 +42,10 @@ app.get("/dex.js", function(req, res) {
     }
   }
 });
+
 app.get("/wake", function(req, res) {
   res.send({ result: true });
 });
-
-app.use(session(session_options));
 
 app.use("/login", login.auth());
 app.get("/logout", function(req, res) {
@@ -65,6 +62,9 @@ app.get("/logout", function(req, res) {
       res.redirect("/login");
     });
 });
+
+// manga limit
+const limit = 10;
 
 app.use(
   "/login_callback",
@@ -83,10 +83,7 @@ app.use(
       }
     },
     (req, res, next, error) => {
-      // Failure callback
-      //console.log(error);
       res.redirect("/");
-      //res.status(400).json(error);
     }
   )
 );
@@ -113,7 +110,6 @@ app.get("/", function(req, res) {
       }
     })
     .catch(err => {
-      //console.log(err);
       res.redirect("/login");
     });
 });
@@ -208,7 +204,7 @@ app.get("/dex", function(req, res) {
               searchu =
                 "Can't find anything with query <b>" + req.query.q + "</b>";
             }
-          } else {
+          } else if (req.query.s && req.query.s == "1" && req.query.self == 1) {
             if (_user.get(uid) && Object.keys(_user.get(uid)).length > 0) {
               let data = Object.keys(_user.get(uid));
               for (let i = 0; i < data.length; i++) {
@@ -235,7 +231,6 @@ app.get("/dex", function(req, res) {
       })();
     })
     .catch(err => {
-      //console.log(err);
       req.session.uid = "";
       req.session.redir = "/dex";
       if (req.query.q && req.query.q != "") {
@@ -298,7 +293,7 @@ app.get("/api/dex/folunfol/:id", function(req, res) {
             return false;
           }
         }
-        
+
         _manga.save();
         _user.save();
         res.send({ result: true, type: baru });
@@ -348,6 +343,19 @@ function searchout(search, fromgetmanga = true, ada) {
       : string;
   };
 
+  let count = function(id) {
+    let db = editJsonFile("db/_dexmanga.json");
+    try {
+      db.get("" + id);
+      return Object.keys(db.get(id + ".follower")).length;
+    } catch (e) {
+      return 0;
+    }
+  };
+
+  // remove dex lang tag
+  search.description = search.description.replace(/\[[^\]]+\]/g, "");
+
   let out =
     '<div class="item">' +
     '<div class="image">' +
@@ -363,18 +371,24 @@ function searchout(search, fromgetmanga = true, ada) {
     "</a>" +
     '<div class="meta">' +
     "<p>" +
-    '<a style="color:#666666"><i class="star icon"></i> ' +
-    (search.rating.bayesian || search.rating.value) +
+    '<a style="color:#666666" title="Rating"><i class="star icon"></i> ' +
+    (search.rating.bayesian || search.rating.value)
+      .toString()
+      .replace(".", ",") +
     "</a>" +
-    '<a style="color:#666666"><i class="eye icon"></i> ' +
-    search.views +
+    '<a style="color:#666666" title="Views"><i class="eye icon"></i> ' +
+    search.views.toLocaleString("id-ID") +
+    '<a style="color:#666666" title="Follower" id="' +
+    search.id +
+    '"><i class="bookmark icon"></i> ' +
+    count(search.id) +
     "</a>" +
     "</p>" +
     "</div>" +
     '<div class="description">' +
     "<p>" +
-    trimString(search.description, 400) +
-    (search.description.length >= 400
+    trimString(search.description, 275) +
+    (search.description.length >= 275
       ? '<a href="https://mangadex.org/title/' +
         search.id +
         '" target="_blank">See more</a>'
