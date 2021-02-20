@@ -156,11 +156,17 @@ app.get("/dex", function(req, res) {
             req.query.s &&
             req.query.s == "1"
           ) {
-            let search;
-            if (isNaN(req.query.q)) {
+            let search, query;
+            query = parseurl(req.query.q);
+
+            if (!query) {
+              query = req.query.q;
+            }
+
+            if (isNaN(query)) {
               // search result
               try {
-                search = await getsearch(req.query.q);
+                search = await getsearch(query);
                 // max search
                 let byk = 5;
                 let len =
@@ -181,12 +187,12 @@ app.get("/dex", function(req, res) {
               }
             } else {
               try {
-                search = await getmanga(req.query.q);
+                search = await getmanga(query);
                 if (!search.isHentai) {
                   let ada = false;
                   if (
-                    _manga.get(req.query.q + ".follower." + uid) &&
-                    _user.get(uid + "." + req.query.q)
+                    _manga.get(query + ".follower." + uid) &&
+                    _user.get(uid + "." + query)
                   ) {
                     ada = true;
                   }
@@ -201,8 +207,7 @@ app.get("/dex", function(req, res) {
               }
             }
             if (searchu == "") {
-              searchu =
-                "Can't find anything with query <b>" + req.query.q + "</b>";
+              searchu = "Can't find anything with query <b>" + query + "</b>";
             }
           } else if (req.query.s && req.query.s == "1" && req.query.self == 1) {
             if (_user.get(uid) && Object.keys(_user.get(uid)).length > 0) {
@@ -335,6 +340,32 @@ app.get("/api/dex/folunfol/:id", function(req, res) {
     }
   })();
 });
+
+function parseurl(url, int = true) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (e) {
+    return null;
+  }
+  let hostname, pathname;
+  hostname = parsed.hostname;
+  pathname = parsed.pathname;
+  if (hostname == "mangadex.org") {
+    if (pathname) {
+      pathname = pathname.substring(1);
+      let split = pathname.split("/");
+      if (split.length >= 2) {
+        if (split[0] == "title") {
+          if (!isNaN(split[1])) {
+            return int ? parseInt(split[1]) : split[1];
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
 
 function searchout(search, fromgetmanga = true, ada) {
   let trimString = function(string, length) {

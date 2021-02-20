@@ -259,7 +259,7 @@ async function dex(event, pushh, all) {
   // dex rss
   let data;
   let feed;
-  
+
   try {
     data = await axios.get(process.env.rss_url);
     feed = xmlparser.parse(data.data).rss.channel.item;
@@ -373,6 +373,15 @@ async function dex(event, pushh, all) {
                 type: "message",
                 label: "Edit",
                 text: "!edit"
+              }
+            },
+            {
+              type: "action",
+              imageUrl: "https://mangadex.org/favicon-192x192.png",
+              action: {
+                type: "message",
+                label: "Refresh",
+                text: "!dex"
               }
             }
           ]
