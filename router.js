@@ -316,8 +316,12 @@ app.get("/api/dex/folunfol/:id", function(req, res) {
               result: false,
               reason: "Manga with such id is not found."
             });
-            return false;
           }
+          res.send({
+            result: false,
+            reason: "Unknown error occured"
+          });
+          return false;
         }
 
         try {
