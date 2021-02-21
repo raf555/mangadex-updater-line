@@ -129,7 +129,7 @@ async function parse(event) {
   let text = textarr[0];
   let sign = text[0];
   let cmd = text.toLowerCase().substring(1);
-  let added = isadded(event);
+  let added = await isadded(event);
 
   if (sign == "!") {
     if (added) {
