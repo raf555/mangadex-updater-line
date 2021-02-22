@@ -33,10 +33,10 @@ cron.schedule("* * * * *", async () => {
 
 // check dex update
 async function getUpdate() {
-  let file = editJsonFile(`db/mangadex.json`);
+  let file = editJsonFile("db/mangadex.json");
   let data = await axios.get(process.env.rss_url);
   let feed = xmlparser.parse(data.data).rss.channel.item;
-  let date = feed[0].pubDate;
+  let date = datetostr(convertTZ(new Date(feed[0].pubDate), "Asia/Jakarta"));
 
   console.log("1 min mangadex has passed");
 
@@ -651,9 +651,19 @@ function convertTZ(date, tzString) {
 
 // convert Date to string
 function dateTodate(d) {
-  var tgl = d.getDate() < 10 ? "0" + d.getDate() : d.getDate();
-  var mon = d.getMonth() + 1 < 10 ? "0" + (d.getMonth() + 1) : d.getMonth() + 1;
+  let tgl = d.getDate() < 10 ? "0" + d.getDate() : d.getDate();
+  let mon = d.getMonth() + 1 < 10 ? "0" + (d.getMonth() + 1) : d.getMonth() + 1;
   return tgl + "-" + mon + "-" + d.getFullYear();
+}
+
+function dateTohour(d) {
+  let jam = d.getHours() < 10 ? "0" + d.getHours() : d.getHours();
+  let mnt = d.getMinutes() < 10 ? "0" + d.getMinutes() : d.getMinutes();
+  return jam + "." + mnt;
+}
+
+function datetostr(d){
+  return dateTodate(d)+" "+dateTohour(d);
 }
 
 module.exports = app;

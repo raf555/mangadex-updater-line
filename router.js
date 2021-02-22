@@ -47,6 +47,29 @@ app.get("/wake", function(req, res) {
   res.send({ result: true });
 });
 
+/*
+function refreshtoken(req, res) {
+  if (req.session.refresh_token) {
+    login
+      .refresh_access_token(req.session.refresh_token)
+      .then(response => {
+        req.session.acc_token = response.access_token;
+        req.session.refresh_token = response.refresh_token;
+        if (req.session.redir && req.session.redir != "/") {
+          var redir = req.session.redir;
+          req.session.redir = "/";
+          res.redirect(redir);
+        } else {
+          res.send("<script>location.reload()</script>");
+        }
+      })
+      .catch(e => res.redirect("/login"));
+  } else {
+    res.redirect("/login");
+  }
+}
+*/
+
 app.use("/login", login.auth());
 app.get("/logout", function(req, res) {
   login
@@ -59,6 +82,7 @@ app.get("/logout", function(req, res) {
     })
     .catch(err => {
       //console.log(err);
+      //refreshtoken(req, res);
       res.redirect("/login");
     });
 });
@@ -71,6 +95,7 @@ app.use(
   login.callback(
     (req, res, next, token_response) => {
       req.session.acc_token = token_response.access_token;
+      req.session.refresh_token = token_response.refresh_token;
       req.session.uid = token_response.id_token.sub;
       req.session.mis = token_response.id_token;
       //res.json(token_response);
@@ -83,7 +108,8 @@ app.use(
       }
     },
     (req, res, next, error) => {
-      res.redirect("/");
+      //refreshtoken(req, res);
+      res.redirect("/login");
     }
   )
 );
@@ -110,6 +136,7 @@ app.get("/", function(req, res) {
       }
     })
     .catch(err => {
+      //refreshtoken(req, res);
       res.redirect("/login");
     });
 });
@@ -117,123 +144,121 @@ app.get("/", function(req, res) {
 app.get("/dex", function(req, res) {
   login
     .verify_access_token(req.session.acc_token)
-    .then(result => {
-      (async () => {
-        let searchu = "";
-        let uid = req.session.uid;
-        let _manga = editJsonFile("db/_dexmanga.json");
-        let _user = editJsonFile("db/_dexuser.json");
-        let add = false;
+    .then(async result => {
+      let searchu = "";
+      let uid = req.session.uid;
+      let _manga = editJsonFile("db/_dexmanga.json");
+      let _user = editJsonFile("db/_dexuser.json");
+      let add = false;
+      try {
+        let added = await client.getProfile(uid);
+        if (editJsonFile("db/user.json").get(uid)) {
+          add = true;
+        }
+      } catch (e) {
+        add = false;
+      }
+      if (add) {
+        // login
         try {
-          let added = await client.getProfile(uid);
-          if (editJsonFile("db/user.json").get(uid)) {
-            add = true;
-          }
+          await mclient.agent.login(
+            process.env.dex_id,
+            process.env.dex_pw,
+            false
+          );
         } catch (e) {
-          add = false;
+          res.send(
+            '<center><h2>Failed to login to <a href="https://mangadex.org" target="_blank">Mangadex</a></h2><br><br>' +
+              '<a class="twitter-timeline" data-width="500" data-height="500" data-theme="dark" href="https://twitter.com/MangaDex?ref_src=twsrc%5Etfw">Tweets by MangaDex</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>' +
+              "</center>"
+          );
+          return false;
         }
-        if (add) {
-          // login
-          try {
-            await mclient.agent.login(
-              process.env.dex_id,
-              process.env.dex_pw,
-              false
-            );
-          } catch (e) {
-            res.send(
-              '<center><h2>Failed to login to <a href="https://mangadex.org" target="_blank">Mangadex</a></h2><br><br>' +
-                '<a class="twitter-timeline" data-width="500" data-height="500" data-theme="dark" href="https://twitter.com/MangaDex?ref_src=twsrc%5Etfw">Tweets by MangaDex</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>' +
-                "</center>"
-            );
-            return false;
+
+        // if there is search param
+        if (
+          req.query.q &&
+          req.query.q != "" &&
+          req.query.s &&
+          req.query.s == "1"
+        ) {
+          let search, query;
+          query = parseurl(req.query.q);
+
+          if (!query) {
+            query = req.query.q;
           }
 
-          // if there is search param
-          if (
-            req.query.q &&
-            req.query.q != "" &&
-            req.query.s &&
-            req.query.s == "1"
-          ) {
-            let search, query;
-            query = parseurl(req.query.q);
+          if (isNaN(query)) {
+            // search result
+            try {
+              search = await getsearch(query);
+              // max search
+              let byk = 5;
+              let len = search.titles.length < byk ? search.titles.length : byk;
+              for (let i = 0; i < len; i++) {
+                let ada = false;
+                if (
+                  _manga.get(search.titles[i].id + ".follower." + uid) &&
+                  _user.get(uid + "." + search.titles[i].id)
+                ) {
+                  ada = true;
+                }
 
-            if (!query) {
-              query = req.query.q;
-            }
-
-            if (isNaN(query)) {
-              // search result
-              try {
-                search = await getsearch(query);
-                // max search
-                let byk = 5;
-                let len =
-                  search.titles.length < byk ? search.titles.length : byk;
-                for (let i = 0; i < len; i++) {
-                  let ada = false;
-                  if (
-                    _manga.get(search.titles[i].id + ".follower." + uid) &&
-                    _user.get(uid + "." + search.titles[i].id)
-                  ) {
-                    ada = true;
-                  }
-
-                  searchu += searchout(search.titles[i], false, ada);
-                }
-              } catch (e) {
-                searchu = "Failed to search manga..";
+                searchu += searchout(search.titles[i], false, ada);
               }
-            } else {
-              try {
-                search = await getmanga(query);
-                if (!search.isHentai) {
-                  let ada = false;
-                  if (
-                    _manga.get(query + ".follower." + uid) &&
-                    _user.get(uid + "." + query)
-                  ) {
-                    ada = true;
-                  }
-                  searchu += searchout(search, false, ada);
-                }
-              } catch (e) {
-                if (e.response.status == 404) {
-                  searchu = "";
-                } else {
-                  searchu = "Failed to get manga data..";
-                }
-              }
+            } catch (e) {
+              searchu = "Failed to search manga..";
             }
-            if (searchu == "") {
-              searchu = "Can't find anything with query <b>" + query + "</b>";
-            }
-          } else if (req.query.s && req.query.s == "1" && req.query.self == 1) {
-            if (_user.get(uid) && Object.keys(_user.get(uid)).length > 0) {
-              let data = Object.keys(_user.get(uid));
-              for (let i = 0; i < data.length; i++) {
-                let search;
-                try {
-                  search = await getmanga(data[i]);
-                  searchu += searchout(search);
-                } catch (e) {
-                  searchu = "Failed to get manga data..";
-                  break;
+          } else {
+            try {
+              search = await getmanga(query);
+              if (!search.isHentai) {
+                let ada = false;
+                if (
+                  _manga.get(query + ".follower." + uid) &&
+                  _user.get(uid + "." + query)
+                ) {
+                  ada = true;
                 }
+                searchu += searchout(search, false, ada);
               }
-            } else {
-              searchu = "You haven't followed anything..";
+            } catch (e) {
+              if (e.response.status == 404) {
+                searchu = "";
+              } else {
+                searchu = "Failed to get manga data..";
+              }
             }
           }
+          if (searchu == "") {
+            searchu = "Can't find anything with query <b>" + query + "</b>";
+          }
+        } else if (req.query.s && req.query.s == "1" && req.query.self == 1) {
+          if (_user.get(uid) && Object.keys(_user.get(uid)).length > 0) {
+            let data = Object.keys(_user.get(uid));
+            for (let i = 0; i < data.length; i++) {
+              let search;
+              try {
+                search = await getmanga(data[i]);
+                searchu += searchout(search);
+              } catch (e) {
+                searchu = "Failed to get manga data..";
+                break;
+              }
+            }
+          } else {
+            searchu = "You haven't followed anything..";
+          }
         }
-        res.render("dex", {
-          out: searchu,
-          q: req.query.q,
-          added: add,
-          limit: limit
-        });
-      })();
+      }
+      res.render("dex", {
+        out: searchu,
+        q: req.query.q,
+        added: add,
+        limit: limit,
+        latest: editJsonFile("db/mangadex.json").get("latest")
+      });
     })
     .catch(err => {
       req.session.uid = "";
@@ -241,108 +266,105 @@ app.get("/dex", function(req, res) {
       if (req.query.q && req.query.q != "") {
         req.session.redir += "?q=" + req.query.q;
       }
+      //refreshtoken(req, res);
       res.redirect("/login");
     });
 });
 
-app.get("/api/dex/folunfol/:id", function(req, res) {
+app.get("/api/dex/folunfol/:id", async (req, res) => {
   if (!req.session.uid) {
     res.send({ result: false, reason: "Unauthorized" });
     return false;
   }
-  (async () => {
-    try {
-      let added = await client.getProfile(req.session.uid);
-      if (!editJsonFile("db/user.json").get(req.session.uid)) {
-        res.send({
-          result: false,
-          reason: "User is not registered in database."
-        });
-        return false;
-      }
-    } catch (e) {
+  try {
+    let added = await client.getProfile(req.session.uid);
+    if (!editJsonFile("db/user.json").get(req.session.uid)) {
       res.send({
         result: false,
-        reason: "User has blocked / not added the bot."
+        reason: "User is not registered in database."
       });
       return false;
     }
-    var searchu = "";
-    if (req.params.id) {
-      var id = parseInt(req.params.id);
+  } catch (e) {
+    res.send({
+      result: false,
+      reason: "User has blocked / not added the bot."
+    });
+    return false;
+  }
+  var searchu = "";
+  if (req.params.id) {
+    var id = parseInt(req.params.id);
 
-      // db
-      let _manga = editJsonFile("db/_dexmanga.json");
-      let _user = editJsonFile("db/_dexuser.json");
+    // db
+    let _manga = editJsonFile("db/_dexmanga.json");
+    let _user = editJsonFile("db/_dexuser.json");
 
-      let uid = req.session.uid; // uid
-      let baru = false; // type
+    let uid = req.session.uid; // uid
+    let baru = false; // type
 
-      if (isNaN(req.params.id) || req.params.id.match(/\./g)) {
-        res.send({ result: false, reason: "invalid argument" });
+    if (isNaN(req.params.id) || req.params.id.match(/\./g)) {
+      res.send({ result: false, reason: "invalid argument" });
+      return false;
+    }
+
+    if (!(!_user.get(uid + "." + id) && !_manga.get(id + ".follower." + uid))) {
+      // unfollow a manga
+      _user.unset(uid + "." + id);
+      _manga.unset(id + ".follower." + uid);
+
+      if (Object.keys(_manga.get(id + ".follower")).length - 1 <= 0) {
+        try {
+          await unfolmanga(id);
+        } catch (e) {
+          res.send({ result: false, reason: "Unknown error occured" });
+          return false;
+        }
+      }
+
+      _manga.save();
+      _user.save();
+      res.send({ result: true, type: baru });
+    } else {
+      if (_user.get(uid) && Object.keys(_user.get(uid)).length >= limit) {
+        res.send({ result: false, reason: "max" });
         return false;
       }
 
-      if (
-        !(!_user.get(uid + "." + id) && !_manga.get(id + ".follower." + uid))
-      ) {
-        // unfollow a manga
-        _user.unset(uid + "." + id);
-        _manga.unset(id + ".follower." + uid);
-
-        if (Object.keys(_manga.get(id + ".follower")).length - 1 <= 0) {
-          try {
-            await unfolmanga(id);
-          } catch (e) {
-            res.send({ result: false, reason: "Unknown error occured" });
-            return false;
-          }
-        }
-
-        _manga.save();
-        _user.save();
-        res.send({ result: true, type: baru });
-      } else {
-        if (_user.get(uid) && Object.keys(_user.get(uid)).length >= limit) {
-          res.send({ result: false, reason: "max" });
-          return false;
-        }
-
-        try {
-          await getmanga(id);
-        } catch (e) {
-          if (e.response.status == 404) {
-            res.send({
-              result: false,
-              reason: "Manga with such id is not found."
-            });
-          }
+      try {
+        await getmanga(id);
+      } catch (e) {
+        if (e.response.status == 404) {
           res.send({
             result: false,
-            reason: "Unknown error occured"
+            reason: "Manga with such id is not found."
           });
-          return false;
         }
+        res.send({
+          result: false,
+          reason: "Unknown error occured"
+        });
+        return false;
+      }
 
-        try {
-          await folmanga(id);
-          if (
-            !_user.get(uid + "." + id) &&
-            !_manga.get(id + ".follower." + uid)
-          ) {
-            _user.set(uid + "." + id, 1);
-            _manga.set(id + ".follower." + uid, 1);
-            _manga.save();
-            _user.save();
-            baru = true;
-          }
-          res.send({ result: true, type: baru });
-        } catch (e) {
-          res.send({ result: false, reason: "Unknown error occured" });
+      try {
+        await folmanga(id);
+        if (
+          !_user.get(uid + "." + id) &&
+          !_manga.get(id + ".follower." + uid)
+        ) {
+          _user.set(uid + "." + id, 1);
+          _manga.set(id + ".follower." + uid, 1);
+          _manga.save();
+          _user.save();
+          baru = true;
         }
+        res.send({ result: true, type: baru });
+      } catch (e) {
+        res.send({ result: false, reason: "Unknown error occured" });
       }
     }
-  })();
+  }
 });
 
 function parseurl(url, int = true) {
