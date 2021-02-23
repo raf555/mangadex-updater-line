@@ -11,7 +11,8 @@ const app = express.Router(),
   session_options = {
     secret: process.env.login_secret,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: { maxAge: 24 * 3600 * 1000 }
   },
   config = {
     channelAccessToken: process.env.acc_token,
@@ -47,29 +48,6 @@ app.get("/wake", function(req, res) {
   res.send({ result: true });
 });
 
-/*
-function refreshtoken(req, res) {
-  if (req.session.refresh_token) {
-    login
-      .refresh_access_token(req.session.refresh_token)
-      .then(response => {
-        req.session.acc_token = response.access_token;
-        req.session.refresh_token = response.refresh_token;
-        if (req.session.redir && req.session.redir != "/") {
-          var redir = req.session.redir;
-          req.session.redir = "/";
-          res.redirect(redir);
-        } else {
-          res.send("<script>location.reload()</script>");
-        }
-      })
-      .catch(e => res.redirect("/login"));
-  } else {
-    res.redirect("/login");
-  }
-}
-*/
-
 app.use("/login", login.auth());
 app.get("/logout", function(req, res) {
   login
@@ -82,7 +60,6 @@ app.get("/logout", function(req, res) {
     })
     .catch(err => {
       //console.log(err);
-      //refreshtoken(req, res);
       res.redirect("/login");
     });
 });
@@ -108,7 +85,6 @@ app.use(
       }
     },
     (req, res, next, error) => {
-      //refreshtoken(req, res);
       res.redirect("/login");
     }
   )
@@ -136,7 +112,6 @@ app.get("/", function(req, res) {
       }
     })
     .catch(err => {
-      //refreshtoken(req, res);
       res.redirect("/login");
     });
 });
@@ -266,7 +241,6 @@ app.get("/dex", function(req, res) {
       if (req.query.q && req.query.q != "") {
         req.session.redir += "?q=" + req.query.q;
       }
-      //refreshtoken(req, res);
       res.redirect("/login");
     });
 });
@@ -454,13 +428,17 @@ function searchout(search, fromgetmanga = true, ada) {
     "</p>" +
     "</div>" +
     '<div class="extra">' +
+    '<div class="left floated content" style="display:none">Latest update: ' +
+    (fromgetmanga ? "" : "") +
+    "</div>" +
+    '<div class="right floated content">' +
     (fromgetmanga
-      ? '<button class="ui right floated yellow button folunfol" data-id="' +
+      ? '<button class="ui folunfol yellow button" data-id="' +
         search.id +
         '">' +
         '<i class="bookmark icon"></i> Unfollow' +
         "</button>"
-      : '<button class="ui right floated folunfol ' +
+      : '<button class="ui folunfol ' +
         (ada ? "yellow" : "green") +
         ' button" data-id="' +
         search.id +
@@ -468,7 +446,7 @@ function searchout(search, fromgetmanga = true, ada) {
         '<i class="bookmark icon"></i>' +
         (ada ? "Unfollow" : "Follow") +
         "</button>") +
-    "</div>" +
+    "</div></div>" +
     "</div>" +
     "</div>";
   return out;

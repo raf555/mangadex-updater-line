@@ -61,12 +61,12 @@
         <div class="content">
             <p>(Unofficial) Mangadex update notifier for LINE.
             Follow a manga and get notified every time there is an update on Mangadex!</p>
-            <h2 id="how-to-use">How to use</h2>
+            <h2>How to use</h2>
             <ol>
             <li>Add bot by clicking <a href="https://line.me/R/ti/p/@228kmsfw">this</a> link.</li>
             <li>Start following a manga using this site!<br><small>You can search manga using title / id / mangadex url</small></li>
             </ol>
-            <h2 id="information">Information</h2>
+            <h2>Information</h2>
             <ol>
             <li>This bot only sends manga update with English language.</li>
             <li>Bot (should) checks update every one minute.</li>
@@ -92,7 +92,7 @@
                   Mangadex Update Notifier
                  <small><a class="ui black circular label" style="font-size:10px;" title="What is this?" onclick="$('#info').modal('show')">?</a></small>
                   <div class="sub header">Customize your manga following list and get message every time there is an update!
-                     <br><small>Latest Manga Update: <%= latest %></small>
+                     <!--<br><small>Latest Manga Update: <%= latest %></small>-->
                   </div>
                </div>
             </h2>
@@ -108,8 +108,8 @@
             <div class="ui middle aligned divided list">
                <div class="item">
                   <div class="floated content">
-                     <form id="s" class="ui form">
-                        <div class="ui fluid large input" id="sin">
+                     <form class="ui form">
+                        <div class="ui fluid large input searchinput">
                            <input type="text" placeholder="Search title (press enter to search new title or dex id or dex url)" id="search" autocomplete="off" value="<%= q||'' %>" />
                            <div class="ui positive button getself" style="display:none">My Following List</div>
                         </div>
@@ -117,8 +117,8 @@
                   </div>
                </div>
             </div>
-            <div class="ui segment" style="height:500px;overflow-x:scroll" id="segme">
-               <div class="ui divided items" id="sr">
+            <div class="ui segment" style="height:500px;overflow-x:scroll">
+               <div class="ui divided items">
                   <%-out %>
                </div>
             </div>

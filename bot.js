@@ -274,28 +274,15 @@ async function dex(event, pushh, all) {
     if (_user.get(event.source.userId)) {
       let usermanga = Object.keys(_user.get(event.source.userId));
       let param = getparam(event.message.text);
-      let regex;
+      let bubbleandregex;
       for (let i = 0; i < feed.length; i++) {
         if (carousel.contents.length == 12) {
           break;
         }
         if (all) {
-          if (param != "") {
-            regex = parseparam(param);
-            if (regex.name.test(feed[i].title)) {
-              if (regex.chap) {
-                if (regex.chap.test(feed[i].title)) {
-                  let bubble = createdexbubble(feed[i]);
-                  carousel.contents.push(bubble);
-                }
-              } else {
-                let bubble = createdexbubble(feed[i]);
-                carousel.contents.push(bubble);
-              }
-            }
-          } else {
-            let bubble = createdexbubble(feed[i]);
-            carousel.contents.push(bubble);
+          bubbleandregex = handledexbubble(feed[i], param);
+          if (bubbleandregex[0] != null) {
+            carousel.contents.push(bubbleandregex[0]);
           }
         } else {
           let mangid = feed[i].mangaLink.split("/")[
@@ -303,26 +290,11 @@ async function dex(event, pushh, all) {
           ];
           for (let j = 0; j < usermanga.length; j++) {
             if (parseInt(usermanga[j]) == mangid) {
-              if (param != "") {
-                regex = parseparam(param);
-                if (regex.name.test(feed[i].title)) {
-                  if (regex.chap) {
-                    if (regex.chap.test(feed[i].title)) {
-                      let bubble = createdexbubble(feed[i]);
-                      carousel.contents.push(bubble);
-                      break;
-                    }
-                  } else {
-                    let bubble = createdexbubble(feed[i]);
-                    carousel.contents.push(bubble);
-                    break;
-                  }
-                }
-              } else {
-                let bubble = createdexbubble(feed[i]);
-                carousel.contents.push(bubble);
-                break;
+              bubbleandregex = handledexbubble(feed[i], param);
+              if (bubbleandregex[0] != null) {
+                carousel.contents.push(bubbleandregex[0]);
               }
+              break;
             }
           }
         }
@@ -332,6 +304,7 @@ async function dex(event, pushh, all) {
 
       if (carousel.contents.length == 0) {
         let out;
+        let regex = bubbleandregex[1];
         if (regex.name) {
           if (regex.chap) {
             param = param.split(" -chapter ");
@@ -464,6 +437,26 @@ async function dex(event, pushh, all) {
       }
     }
   }
+}
+
+function handledexbubble(data, param) {
+  let regex;
+  let bubble;
+  if (param != "") {
+    regex = parseparam(param);
+    if (regex.name.test(data.title)) {
+      if (regex.chap) {
+        if (regex.chap.test(data.title)) {
+          bubble = createdexbubble(data);
+        }
+      } else {
+        bubble = createdexbubble(data);
+      }
+    }
+  } else {
+    bubble = createdexbubble(data);
+  }
+  return [bubble, regex];
 }
 
 function createdexbubble(data) {
@@ -662,8 +655,8 @@ function dateTohour(d) {
   return jam + "." + mnt;
 }
 
-function datetostr(d){
-  return dateTodate(d)+" "+dateTohour(d);
+function datetostr(d) {
+  return dateTodate(d) + " " + dateTohour(d);
 }
 
 module.exports = app;
