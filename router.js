@@ -180,7 +180,7 @@ app.get("/dex", function(req, res) {
                   ada = true;
                 }
 
-                searchu += searchout(search.titles[i], false, ada);
+                searchu += searchout(search.titles[i], false, ada, false);
               }
             } catch (e) {
               searchu = "Failed to search manga..";
@@ -366,7 +366,7 @@ function parseurl(url, int = true) {
   return null;
 }
 
-function searchout(searchdata, fromgetmanga = true, ada) {
+function searchout(searchdata, fromself = true, ada, fromgetmanga = true) {
   let db = editJsonFile("db/_dexmanga.json");
   let trimString = (string, length) => {
     return string.length > length
@@ -443,12 +443,12 @@ function searchout(searchdata, fromgetmanga = true, ada) {
     "</div>" +
     '<div class="extra">' +
     '<div class="left floated content" style="' +
-    (!fromgetmanga ? "display:none" : "") +
+    (!fromself ? "display:none" : "") +
     '">Latest update: ' +
-    (fromgetmanga ? findlatest(searchdata) + " UTC+7" : "") +
+    (fromself ? findlatest(searchdata) + " UTC+7" : "") +
     "</div>" +
     '<div class="right floated content">' +
-    (fromgetmanga
+    (fromself
       ? '<button class="ui folunfol yellow button" data-id="' +
         search.id +
         '">' +
