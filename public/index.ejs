@@ -55,10 +55,6 @@
             </div>
             <div class="ui divider"></div>
             <h2 class="ui header">
-               Halo admin
-            </h2>
-            <div class="ui divider"></div>
-            <h2 class="ui header">
                <i class="power off icon"></i>
                <div class="content">
                   Push Messages Quota
@@ -71,16 +67,46 @@
             </div>
             <div class="ui divider"></div>
             <h2 class="ui header">
-               <i class="thumbs up outline icon"></i>
+               <i class="database icon"></i>
                <div class="content">
-                  Active User(s)
-                  <div class="sub header">User that has manga followed with this bot.</div>
+                  Statistics
+                  <div class="sub header">User that has manga followed with this bot and total manga followed.</div>
                </div>
             </h2><center>
            <h3 class="ui header">
                      <i class="user icon"></i>
                      <div class="content">
-                       <%= user %> Users
+                       <%= user %> Users Active
+                     </div>
+           </h3>
+           <h3 class="ui header">
+                     <i class="book icon"></i>
+                     <div class="content">
+                       <%= manga %> Manga(s) Followed
+                     </div>
+           </h3></center>
+           <div class="ui divider"></div>
+            <h2 class="ui header">
+               <i class="thumbs up outline icon"></i>
+               <div class="content">
+                  Mangadex Status
+                  <div class="sub header">User that has manga followed with this bot.</div>
+               </div>
+            </h2><center>
+           <%
+           let ok = '<a class="ui green label">OK</a>';
+           let no = '<a class="ui red label">Couldn\'t Connect</a>';
+           %>
+           <h3 class="ui header">
+                     <i class="server icon"></i>
+                     <div class="content">
+                       MangaDex <%- dex?ok:no %>
+                     </div>
+           </h3>
+           <h3 class="ui header">
+                     <i class="code icon"></i>
+                     <div class="content">
+                       API <%- api?ok:no %>
                      </div>
            </h3></center>
            <div class="ui divider"></div>
