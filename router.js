@@ -396,7 +396,7 @@ function searchout(searchdata, fromgetmanga = true, ada) {
     }
   };
 
-  let search = searchdata.manga;
+  let search = fromgetmanga ? searchdata.manga : searchdata;
 
   // remove dex lang tag
   search.description = search.description.replace(/\[[^\]]+\]/g, "");
