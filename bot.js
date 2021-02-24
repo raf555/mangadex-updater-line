@@ -25,7 +25,11 @@ app.post("/callback", line.middleware(config), (req, res) => {
 // check manga every minute
 cron.schedule("* * * * *", async () => {
   try {
-    await getUpdate();
+    // await getUpdate();
+
+    // using update check v2
+    await getUpdate2();
+    
   } catch (e) {
     console.log("Failed to fetch data from mangadex");
   }
@@ -36,7 +40,8 @@ async function getUpdate() {
   let file = editJsonFile("db/mangadex.json");
   let data = await axios.get(process.env.rss_url);
   let feed = xmlparser.parse(data.data).rss.channel.item;
-  let date = datetostr(convertTZ(new Date(feed[0].pubDate), "Asia/Jakarta"));
+  //let date = datetostr(convertTZ(new Date(feed[0].pubDate), "Asia/Jakarta"));
+  let date = feed[0].pubDate;
 
   console.log("1 min mangadex has passed");
 
@@ -45,6 +50,76 @@ async function getUpdate() {
     file.save();
     console.log("mangadex updated");
     return dex(null, true);
+  }
+}
+
+// check dex update v2
+async function getUpdate2() {
+  console.log("1 min mangadex has passed");
+  let data = await axios.get(process.env.rss_url);
+  let feed = xmlparser.parse(data.data).rss.channel.item;
+
+  const db = editJsonFile("db/_dexmanga.json");
+  let dbo = Object.keys(db.get());
+
+  let getid = url => {
+    return url.split("/")[url.split("/").length - 1];
+  };
+
+  for (let i = 0; i < dbo.length; i++) {
+    if (Object.keys(db.get(dbo[i]).follower).length > 0) {
+      if (!db.get(dbo[i]).latest) {
+        db.set(dbo[i] + ".latest", "");
+      }
+
+      for (let j = 0; j < feed.length; j++) {
+        if (getid(feed[j].mangaLink) == dbo[i]) {
+          if (db.get(dbo[i]).latest != feed[j].pubDate) {
+            db.set(dbo[i] + ".latest", feed[j].pubDate);
+            db.save();
+            console.log("Manga with id " + dbo[i] + " is just updated");
+            await pushUpdate(feed[j], Object.keys(db.get(dbo[i]).follower));
+          }
+          break;
+        }
+      }
+    }
+  }
+}
+
+async function pushUpdate(chapt, follower) {
+  for (let i in follower) {
+    let bubble = createdexbubble(chapt);
+    let alttext = chapt.title;
+    await push(follower[i], {
+      type: "flex",
+      altText: "Mangadex Update - " + alttext,
+      contents: bubble,
+      sender: {
+        name: "MangaDex Update",
+        iconUrl: "https://mangadex.org/favicon-192x192.png"
+      },
+      quickReply: {
+        items: [
+          {
+            type: "action",
+            action: {
+              type: "message",
+              label: "Edit",
+              text: "!edit"
+            }
+          },
+          {
+            type: "action",
+            action: {
+              type: "message",
+              label: "List",
+              text: "!dex"
+            }
+          }
+        ]
+      }
+    });
   }
 }
 
@@ -418,16 +493,16 @@ async function dex(event, pushh, all) {
                   type: "action",
                   action: {
                     type: "message",
-                    label: "List",
-                    text: "!dex"
+                    label: "Edit",
+                    text: "!edit"
                   }
                 },
                 {
                   type: "action",
                   action: {
                     type: "message",
-                    label: "Edit",
-                    text: "!edit"
+                    label: "List",
+                    text: "!dex"
                   }
                 }
               ]
