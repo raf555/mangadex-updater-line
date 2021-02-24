@@ -231,8 +231,7 @@ app.get("/dex", function(req, res) {
         out: searchu,
         q: req.query.q,
         added: add,
-        limit: limit,
-        latest: editJsonFile("db/mangadex.json").get("latest")
+        limit: limit
       });
     })
     .catch(err => {
@@ -443,7 +442,9 @@ function searchout(searchdata, fromgetmanga = true, ada) {
     "</p>" +
     "</div>" +
     '<div class="extra">' +
-    '<div class="left floated content">Latest update: ' +
+    '<div class="left floated content" style="' +
+    (!fromgetmanga ? "display:none" : "") +
+    '">Latest update: ' +
     (fromgetmanga ? findlatest(searchdata) + " UTC+7" : "") +
     "</div>" +
     '<div class="right floated content">' +
@@ -579,7 +580,7 @@ function dateTohour(d) {
 }
 
 function datetostr(d) {
-  return dateTodate(d) + " " + dateTohour(d);
+  return dateTodate(d) + " - " + dateTohour(d);
 }
 
 module.exports = app;
