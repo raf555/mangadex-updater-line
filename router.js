@@ -93,19 +93,42 @@ app.use(
 app.get("/", function(req, res) {
   login
     .verify_access_token(req.session.acc_token)
-    .then(result => {
+    .then(async result => {
       if (req.session.uid == process.env.admin_id) {
         let db = editJsonFile("db/_dexuser.json");
+        let db2 = editJsonFile("db/_dexmanga.json");
         let data = Object.keys(db.get());
+        let data2 = Object.keys(db2.get());
         let c = 0;
+        let c2 = 0;
+        let dex = true;
+        let api = true;
+        try {
+          await axios.get("https://mangadex.org");
+        } catch (e) {
+          dex = false;
+        }
+        try {
+          await axios.get("http://api.mangadex.org/v2/");
+        } catch (e) {
+          api = false;
+        }
         for (let id of data) {
           if (Object.keys(db.get(id)).length > 0) {
             c += 1;
           }
         }
+        for (let id of data2) {
+          if (Object.keys(db2.get(id).follower).length > 0) {
+            c2 += 1;
+          }
+        }
         res.render("index", {
           kuota: editJsonFile("db/pushlimit.json").get("quota"),
-          user: c
+          user: c,
+          manga: c2,
+          dex: dex,
+          api: api
         });
       } else {
         res.redirect("/dex");

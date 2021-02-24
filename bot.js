@@ -166,7 +166,7 @@ async function followevent(event) {
   return reply(event, {
     type: "text",
     text:
-      "Welcome to (Unofficial) Mangadex Notifier for LINE!\n\n" +
+      "Welcome to Mangadex Notifier for LINE!\n\n" +
       "Available command: \n" +
       "• !dex\n=> to open your following list latest chapter update.\n" +
       "• !dex manga_name\n=> to open your following list with manga name (e.g. !dex kubo-san).\n" +
