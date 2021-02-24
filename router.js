@@ -367,15 +367,15 @@ function parseurl(url, int = true) {
   return null;
 }
 
-function searchout(search, fromgetmanga = true, ada) {
-  let trimString = function(string, length) {
+function searchout(searchdata, fromgetmanga = true, ada) {
+  let db = editJsonFile("db/_dexmanga.json");
+  let trimString = (string, length) => {
     return string.length > length
       ? string.substring(0, length) + "... "
       : string;
   };
 
-  let count = function(id) {
-    let db = editJsonFile("db/_dexmanga.json");
+  let count = id => {
     try {
       db.get("" + id);
       return Object.keys(db.get(id + ".follower")).length;
@@ -383,6 +383,21 @@ function searchout(search, fromgetmanga = true, ada) {
       return 0;
     }
   };
+
+  let findlatest = data => {
+    for (let i in data.chapters) {
+      if (
+        data.chapters[i].language == "gb" ||
+        data.chapters[i].language == "en"
+      ) {
+        return datetostr(
+          convertTZ(new Date(data.chapters[i].timestamp * 1000), "Asia/Jakarta")
+        );
+      }
+    }
+  };
+
+  let search = searchdata.manga;
 
   // remove dex lang tag
   search.description = search.description.replace(/\[[^\]]+\]/g, "");
@@ -428,8 +443,8 @@ function searchout(search, fromgetmanga = true, ada) {
     "</p>" +
     "</div>" +
     '<div class="extra">' +
-    '<div class="left floated content" style="display:none">Latest update: ' +
-    (fromgetmanga ? "" : "") +
+    '<div class="left floated content">Latest update: ' +
+    (fromgetmanga ? findlatest(searchdata) + " UTC+7" : "") +
     "</div>" +
     '<div class="right floated content">' +
     (fromgetmanga
@@ -494,14 +509,17 @@ async function getmanga(id, fromcache = true) {
       return out;
     }
   }
-  let data = await axios.get("https://api.mangadex.org/v2/manga/" + id, {
-    headers: {
-      Cookie: process.env.dex_cookies,
-      "X-Requested-With": "XMLHttpRequest",
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
+  let data = await axios.get(
+    "https://api.mangadex.org/v2/manga/" + id + "?include=chapters",
+    {
+      headers: {
+        Cookie: process.env.dex_cookies,
+        "X-Requested-With": "XMLHttpRequest",
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
+      }
     }
-  });
+  );
   myCache.set("manga-" + id, data.data.data);
   return data.data.data;
 }
@@ -537,6 +555,31 @@ async function ambilfollow() {
     }
   );
   return tes.data.data;
+}
+
+function convertTZ(date, tzString) {
+  return new Date(
+    (typeof date === "string" ? new Date(date) : date).toLocaleString("en-US", {
+      timeZone: tzString
+    })
+  );
+}
+
+// convert Date to string
+function dateTodate(d) {
+  let tgl = d.getDate() < 10 ? "0" + d.getDate() : d.getDate();
+  let mon = d.getMonth() + 1 < 10 ? "0" + (d.getMonth() + 1) : d.getMonth() + 1;
+  return tgl + "-" + mon + "-" + d.getFullYear();
+}
+
+function dateTohour(d) {
+  let jam = d.getHours() < 10 ? "0" + d.getHours() : d.getHours();
+  let mnt = d.getMinutes() < 10 ? "0" + d.getMinutes() : d.getMinutes();
+  return jam + "." + mnt;
+}
+
+function datetostr(d) {
+  return dateTodate(d) + " " + dateTohour(d);
 }
 
 module.exports = app;
