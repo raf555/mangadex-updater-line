@@ -17,12 +17,12 @@ Follow a manga and get notified every time there is an update on mangadex!
 -->
 
 ## Bot When First Added as Friend
-![bot when first added](https://i.ibb.co/rk4q27b/218508.jpg)
+![bot when first added](https://i.ibb.co/hD1mdRK/962583.jpg)
 
 ## Editing Page
 *[Login](https://dex-line.glitch.me/dex) by LINE account is required*
 
-![edit page](https://i.ibb.co/8sW63tj/960713.jpg)
+![edit page](https://i.ibb.co/5F2QZTd/962584.jpg)
 
 ## Contributing
 
