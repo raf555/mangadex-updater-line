@@ -30,18 +30,12 @@ const app = express.Router(),
   }),
   mclient = new Mangadex();
 
+mclient.agent.login(process.env.dex_id, process.env.dex_pw, false);
+
 app.use(session(session_options));
 
 app.get("/dex.js", function(req, res) {
-  if (!req.get("referer")) {
-    res.sendStatus(404);
-  } else {
-    if (!req.get("referer").match("https://dex-line.glitch.me/")) {
-      res.sendStatus(404);
-    } else {
-      res.sendFile(__dirname + "/public/static/dex.js");
-    }
-  }
+  res.sendFile(__dirname + "/public/static/dex.js");
 });
 
 app.get("/wake", function(req, res) {
@@ -139,26 +133,37 @@ app.get("/", function(req, res) {
     });
 });
 
+app.get("/dexstatus", async (req, res) => {
+  let dex = true;
+  let api = true;
+  try {
+    await axios.get("https://mangadex.org");
+  } catch (e) {
+    dex = false;
+  }
+  try {
+    await axios.get("http://api.mangadex.org/v2/");
+  } catch (e) {
+    api = false;
+  }
+  res.send({ result: dex && api });
+});
+
 app.get("/dex", function(req, res) {
   login
     .verify_access_token(req.session.acc_token)
     .then(async result => {
-      let searchu = "";
-      let uid = req.session.uid;
       let _manga = editJsonFile("db/_dexmanga.json");
       let _user = editJsonFile("db/_dexuser.json");
-      let add = false;
-      try {
-        let added = await client.getProfile(uid);
-        if (editJsonFile("db/user.json").get(uid)) {
-          add = true;
-        }
-      } catch (e) {
-        add = false;
-      }
+
+      let searchu = "";
+      let uid = req.session.uid;
+      let userdb = editJsonFile("db/user.json");
+      let add = userdb.get(uid) && !userdb.get(uid + ".block");
+
       if (add) {
         // login
-        try {
+        /*try {
           await mclient.agent.login(
             process.env.dex_id,
             process.env.dex_pw,
@@ -171,7 +176,7 @@ app.get("/dex", function(req, res) {
               "</center>"
           );
           return false;
-        }
+        }*/
 
         // if there is search param
         if (
@@ -268,6 +273,15 @@ app.get("/dex", function(req, res) {
 });
 
 app.get("/api/dex/folunfol/:id", async (req, res) => {
+  if (!req.get("referer")) {
+    res.send({ result: false, reason: "Unauthorized" });
+    return false;
+  } else {
+    if (!/https:\/\/dex-line.glitch\.me/.test(req.get("referer"))) {
+      res.send({ result: false, reason: "Unauthorized" });
+      return false;
+    }
+  }
   if (!req.session.uid) {
     res.send({ result: false, reason: "Unauthorized" });
     return false;
@@ -288,9 +302,8 @@ app.get("/api/dex/folunfol/:id", async (req, res) => {
     });
     return false;
   }
-  var searchu = "";
   if (req.params.id) {
-    var id = parseInt(req.params.id);
+    let id = parseInt(req.params.id);
 
     // db
     let _manga = editJsonFile("db/_dexmanga.json");
@@ -299,7 +312,7 @@ app.get("/api/dex/folunfol/:id", async (req, res) => {
     let uid = req.session.uid; // uid
     let baru = false; // type
 
-    if (isNaN(req.params.id) || req.params.id.match(/\./g)) {
+    if (isNaN(req.params.id) || req.params.id.match(/\./g) || id < 0) {
       res.send({ result: false, reason: "invalid argument" });
       return false;
     }
@@ -312,6 +325,7 @@ app.get("/api/dex/folunfol/:id", async (req, res) => {
       if (Object.keys(_manga.get(id + ".follower")).length - 1 <= 0) {
         try {
           await unfolmanga(id);
+          _manga.unset(req.params.id);
         } catch (e) {
           res.send({ result: false, reason: "Unknown error occured" });
           return false;
@@ -326,23 +340,6 @@ app.get("/api/dex/folunfol/:id", async (req, res) => {
         res.send({ result: false, reason: "max" });
         return false;
       }
-
-      try {
-        await getmanga(id);
-      } catch (e) {
-        if (e.response.status == 404) {
-          res.send({
-            result: false,
-            reason: "Manga with such id is not found."
-          });
-        }
-        res.send({
-          result: false,
-          reason: "Unknown error occured"
-        });
-        return false;
-      }
-
       try {
         await folmanga(id);
         if (
@@ -465,19 +462,18 @@ function searchout(searchdata, fromself = true, ada, fromgetmanga = true) {
     "</p>" +
     "</div>" +
     '<div class="extra">' +
-    '<div class="left floated content" style="' +
+    '<div class="ui left floated label" style="' +
     (!fromself ? "display:none" : "") +
-    '">Latest update: ' +
+    '">Last updated on ' +
     (fromself ? findlatest(searchdata) + " UTC+7" : "") +
     "</div>" +
-    '<div class="right floated content">' +
     (fromself
-      ? '<button class="ui folunfol yellow button" data-id="' +
+      ? '<button class="ui right floated folunfol yellow button" data-id="' +
         search.id +
         '">' +
         '<i class="bookmark icon"></i> Unfollow' +
         "</button>"
-      : '<button class="ui folunfol ' +
+      : '<button class="ui right floated folunfol ' +
         (ada ? "yellow" : "green") +
         ' button" data-id="' +
         search.id +
@@ -485,7 +481,7 @@ function searchout(searchdata, fromself = true, ada, fromgetmanga = true) {
         '<i class="bookmark icon"></i>' +
         (ada ? "Unfollow" : "Follow") +
         "</button>") +
-    "</div></div>" +
+    "</div>" +
     "</div>" +
     "</div>";
   return out;

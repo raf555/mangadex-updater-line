@@ -29,7 +29,6 @@ cron.schedule("* * * * *", async () => {
 
     // using update check v2
     await getUpdate2();
-    
   } catch (e) {
     console.log("Failed to fetch data from mangadex");
   }
@@ -129,6 +128,8 @@ async function handleEvent(event) {
   switch (type) {
     case "follow":
       return followevent(event);
+    case "unfollow":
+      return unfollowevent(event);
     case "message":
       return event.message.text ? parse(event) : Promise.resolve(null);
   }
@@ -159,6 +160,13 @@ async function push(id, message) {
   } catch (e) {
     return Promise.resolve(null);
   }
+}
+
+function unfollowevent(event) {
+  let userdb = editJsonFile("db/user.json");
+  userdb.set(event.source.userId + ".block", true);
+  userdb.save();
+  return Promise.resolve(null);
 }
 
 async function followevent(event) {
@@ -213,7 +221,7 @@ async function parse(event) {
           return dex(event);
         case "dex2":
           return event.source.userId == process.env.admin_id
-            ? dex(event, null, true)
+            ? dex(event, true)
             : Promise.resolve(null);
         case "edit":
           return edit(event);
@@ -235,10 +243,11 @@ async function isadded(event) {
   try {
     let userdata = await client.getProfile(event.source.userId);
     // for now, limit total user that can be registered
-    let userlimit = 15;
+    let userlimit = 999;
     if (Object.keys(userdb.get()).length <= userlimit) {
       userdb.set(userdata.userId + ".name", userdata.displayName);
       userdb.set(userdata.userId + ".pic", userdata.pictureUrl);
+      userdb.set(userdata.userId + ".block", false);
       userdb.save();
       added = true;
     }
@@ -288,7 +297,7 @@ function edit(event) {
   });
 }
 
-async function dex(event, pushh, all) {
+async function dex(event, all) {
   // MANGADEX
 
   // database
@@ -345,172 +354,107 @@ async function dex(event, pushh, all) {
     });
   }
 
-  if (!pushh) {
-    if (_user.get(event.source.userId)) {
-      let usermanga = Object.keys(_user.get(event.source.userId));
-      let param = getparam(event.message.text);
-      let bubbleandregex;
-      for (let i = 0; i < feed.length; i++) {
-        if (carousel.contents.length == 12) {
-          break;
+  if (_user.get(event.source.userId)) {
+    let usermanga = Object.keys(_user.get(event.source.userId));
+    let param = getparam(event.message.text);
+    let bubbleandregex;
+    for (let i = 0; i < feed.length; i++) {
+      if (carousel.contents.length == 12) {
+        break;
+      }
+      if (all) {
+        bubbleandregex = handledexbubble(feed[i], param);
+        if (bubbleandregex[0] != null) {
+          carousel.contents.push(bubbleandregex[0]);
         }
-        if (all) {
-          bubbleandregex = handledexbubble(feed[i], param);
-          if (bubbleandregex[0] != null) {
-            carousel.contents.push(bubbleandregex[0]);
-          }
-        } else {
-          let mangid = feed[i].mangaLink.split("/")[
-            feed[i].mangaLink.split("/").length - 1
-          ];
-          for (let j = 0; j < usermanga.length; j++) {
-            if (parseInt(usermanga[j]) == mangid) {
-              bubbleandregex = handledexbubble(feed[i], param);
-              if (bubbleandregex[0] != null) {
-                carousel.contents.push(bubbleandregex[0]);
-              }
-              break;
+      } else {
+        let mangid = feed[i].mangaLink.split("/")[
+          feed[i].mangaLink.split("/").length - 1
+        ];
+        for (let j = 0; j < usermanga.length; j++) {
+          if (parseInt(usermanga[j]) == mangid) {
+            bubbleandregex = handledexbubble(feed[i], param);
+            if (bubbleandregex[0] != null) {
+              carousel.contents.push(bubbleandregex[0]);
             }
+            break;
           }
         }
       }
-      //carousel.contents.push(editb);
-      //console.log(JSON.stringify(carousel));
+    }
+    //carousel.contents.push(editb);
+    //console.log(JSON.stringify(carousel));
 
-      if (carousel.contents.length == 0) {
-        let out;
-        let regex = bubbleandregex[1];
-        if (regex.name) {
-          if (regex.chap) {
-            param = param.split(" -chapter ");
-            out =
-              "There is no manga that match with 「" +
-              param[0] +
-              "」 and chapter " +
-              param[1].trim() +
-              " in your following list.";
-          } else {
-            out =
-              "There is no manga that match with 「" +
-              param +
-              "」 in your following list.";
+    let qr = {
+      items: [
+        {
+          type: "action",
+          action: {
+            type: "message",
+            label: "Edit",
+            text: "!edit"
           }
+        },
+        {
+          type: "action",
+          imageUrl: "https://mangadex.org/favicon-192x192.png",
+          action: {
+            type: "message",
+            label: "Refresh",
+            text: "!dex"
+          }
+        }
+      ]
+    };
+
+    if (carousel.contents.length == 0) {
+      let out;
+      let regex = bubbleandregex[1];
+      if (regex.name) {
+        if (regex.chap) {
+          param = param.split(" -chapter ");
+          out =
+            "There is no manga that match with 「" +
+            param[0] +
+            "」 and chapter " +
+            param[1].trim() +
+            " in your following list.";
         } else {
           out =
-            "You haven't followed any manga or there is no update based on your following list.";
+            "There is no manga that match with 「" +
+            param +
+            "」 in your following list.";
         }
-        return reply(event, {
-          type: "text",
-          text: out
-        });
+      } else {
+        out =
+          "You haven't followed any manga or there is no update based on your following list.";
       }
-
       return reply(event, {
-        type: "flex",
-        altText: "Mangadex Update",
-        contents: carousel,
+        type: "text",
+        text: out,
         sender: {
           name: "MangaDex Update",
           iconUrl: "https://mangadex.org/favicon-192x192.png"
         },
-        quickReply: {
-          items: [
-            {
-              type: "action",
-              action: {
-                type: "message",
-                label: "Edit",
-                text: "!edit"
-              }
-            },
-            {
-              type: "action",
-              imageUrl: "https://mangadex.org/favicon-192x192.png",
-              action: {
-                type: "message",
-                label: "Refresh",
-                text: "!dex"
-              }
-            }
-          ]
-        }
-      });
-    } else {
-      return reply(event, {
-        type: "text",
-        text: "You haven't followed any manga."
+        quickReply: qr
       });
     }
+
+    return reply(event, {
+      type: "flex",
+      altText: "Mangadex Update",
+      contents: carousel,
+      sender: {
+        name: "MangaDex Update",
+        iconUrl: "https://mangadex.org/favicon-192x192.png"
+      },
+      quickReply: qr
+    });
   } else {
-    let apdetid = feed[0].mangaLink.split("/")[
-      feed[0].mangaLink.split("/").length - 1
-    ];
-    let user = _manga.get(apdetid + ".follower");
-    let alttext = "";
-
-    if (user) {
-      let userdata = Object.keys(user);
-      for (let k = 0; k < userdata.length; k++) {
-        let usermanga = Object.keys(_user.get(userdata[k]));
-        for (let i = 0; i < feed.length; i++) {
-          if (carousel.contents.length == 11) {
-            break;
-          }
-          let mangid = feed[i].mangaLink.split("/")[
-            feed[i].mangaLink.split("/").length - 1
-          ];
-          for (let j = 0; j < usermanga.length; j++) {
-            if (parseInt(usermanga[j]) == mangid) {
-              let bubble = createdexbubble(feed[i]);
-              carousel.contents.push(bubble);
-              alttext = feed[i].title;
-              break;
-            }
-          }
-
-          break; // show only one bubble when update
-        }
-        //carousel.contents.push(editb);
-
-        if (carousel.contents.length == 0) {
-          return push(userdata[k], {
-            type: "text",
-            text:
-              "You haven't followed any manga or there is no update based on your following list."
-          });
-        } else {
-          return push(userdata[k], {
-            type: "flex",
-            altText: "Mangadex Update - " + alttext,
-            contents: carousel,
-            sender: {
-              name: "MangaDex Update",
-              iconUrl: "https://mangadex.org/favicon-192x192.png"
-            },
-            quickReply: {
-              items: [
-                {
-                  type: "action",
-                  action: {
-                    type: "message",
-                    label: "Edit",
-                    text: "!edit"
-                  }
-                },
-                {
-                  type: "action",
-                  action: {
-                    type: "message",
-                    label: "List",
-                    text: "!dex"
-                  }
-                }
-              ]
-            }
-          });
-        }
-      }
-    }
+    return reply(event, {
+      type: "text",
+      text: "You haven't followed any manga."
+    });
   }
 }
 
