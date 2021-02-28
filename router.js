@@ -30,6 +30,7 @@ const app = express.Router(),
   }),
   mclient = new Mangadex();
 
+// login
 mclient.agent.login(process.env.dex_id, process.env.dex_pw, false);
 
 app.use(session(session_options));
@@ -146,7 +147,17 @@ app.get("/dexstatus", async (req, res) => {
   } catch (e) {
     api = false;
   }
-  res.send({ result: dex && api });
+  let fail = "none";
+  if (!dex && !api) {
+    fail = "both";
+  } else {
+    if (!dex) {
+      fail = "dex";
+    } else if (!api) {
+      fail = "api";
+    }
+  }
+  res.send({ result: dex && api, fail: fail });
 });
 
 app.get("/dex", function(req, res) {
@@ -160,6 +171,7 @@ app.get("/dex", function(req, res) {
       let uid = req.session.uid;
       let userdb = editJsonFile("db/user.json");
       let add = userdb.get(uid) && !userdb.get(uid + ".block");
+      let cache = !(req.query.nocache && req.query.nocache == 1); // refresh cache
 
       if (add) {
         // login
@@ -195,7 +207,7 @@ app.get("/dex", function(req, res) {
           if (isNaN(query)) {
             // search result
             try {
-              search = await getsearch(query);
+              search = await getsearch(query, cache);
               // max search
               let byk = 5;
               let len = search.titles.length < byk ? search.titles.length : byk;
@@ -215,7 +227,7 @@ app.get("/dex", function(req, res) {
             }
           } else {
             try {
-              search = await getmanga(query);
+              search = await getmanga(query, cache);
               if (!search.isHentai) {
                 let ada = false;
                 if (
@@ -224,7 +236,11 @@ app.get("/dex", function(req, res) {
                 ) {
                   ada = true;
                 }
-                searchu += searchout(search, false, ada);
+                if (req.query.refresh && req.query.refresh == 1) {
+                  searchu += searchout(search, true, ada);
+                } else {
+                  searchu += searchout(search, false, ada);
+                }
               }
             } catch (e) {
               if (e.response.status == 404) {
@@ -243,7 +259,7 @@ app.get("/dex", function(req, res) {
             for (let i = 0; i < data.length; i++) {
               let search;
               try {
-                search = await getmanga(data[i]);
+                search = await getmanga(data[i], cache);
                 searchu += searchout(search);
               } catch (e) {
                 searchu = "Failed to get manga data..";
@@ -360,6 +376,20 @@ app.get("/api/dex/folunfol/:id", async (req, res) => {
   }
 });
 
+app.get("/api/cache/refresh/:id", async (req, res) => {
+  try {
+    let id = req.params.id;
+    if (myCache.has("manga-" + id)) {
+      myCache.del("manga-" + id);
+    }
+    await getmanga(id);
+    console.log("Manga cache with id " + id + " is just updated");
+    res.send({ res: "ok" });
+  } catch (e) {
+    res.send({ res: "no" });
+  }
+});
+
 function parseurl(url, int = true) {
   let parsed;
   try {
@@ -386,7 +416,12 @@ function parseurl(url, int = true) {
   return null;
 }
 
-function searchout(searchdata, fromself = true, ada, fromgetmanga = true) {
+function searchout(
+  searchdata,
+  fromself = true,
+  ada = true,
+  fromgetmanga = true
+) {
   let db = editJsonFile("db/_dexmanga.json");
   let trimString = (string, length) => {
     return string.length > length
@@ -421,6 +456,7 @@ function searchout(searchdata, fromself = true, ada, fromgetmanga = true) {
   // remove dex lang tag
   search.description = search.description.replace(/\[[^\]]+\]/g, "");
 
+  let url = "https://mangadex.org/title/" + search.id;
   let out =
     '<div class="item">' +
     '<div class="image">' +
@@ -429,11 +465,13 @@ function searchout(searchdata, fromself = true, ada, fromgetmanga = true) {
     '" />' +
     "</div>" +
     '<div class="content">' +
-    '<a class="header" target="_blank" href="https://mangadex.org/title/' +
-    search.id +
+    '<a class="header" target="_blank" href="' +
+    url +
     '">' +
     search.title +
-    "</a>" +
+    '<span style="display:none">' +
+    url +
+    "</span></a>" +
     '<div class="meta">' +
     "<p>" +
     '<a style="color:#666666" title="Rating"><i class="star icon"></i> ' +
@@ -462,25 +500,21 @@ function searchout(searchdata, fromself = true, ada, fromgetmanga = true) {
     "</p>" +
     "</div>" +
     '<div class="extra">' +
-    '<div class="ui left floated label" style="' +
+    '<div class="ui left floated label lastup" style="cursor:pointer;' +
     (!fromself ? "display:none" : "") +
-    '">Last updated on ' +
+    '" data-id="' +
+    search.id +
+    '" title="Click to refresh data">Last updated on ' +
     (fromself ? findlatest(searchdata) + " UTC+7" : "") +
     "</div>" +
-    (fromself
-      ? '<button class="ui right floated folunfol yellow button" data-id="' +
-        search.id +
-        '">' +
-        '<i class="bookmark icon"></i> Unfollow' +
-        "</button>"
-      : '<button class="ui right floated folunfol ' +
-        (ada ? "yellow" : "green") +
-        ' button" data-id="' +
-        search.id +
-        '">' +
-        '<i class="bookmark icon"></i>' +
-        (ada ? "Unfollow" : "Follow") +
-        "</button>") +
+    '<button class="ui right floated folunfol ' +
+    (ada ? "yellow" : "green") +
+    ' button" data-id="' +
+    search.id +
+    '">' +
+    '<i class="bookmark icon"></i>' +
+    (ada ? "Unfollow" : "Follow") +
+    "</button>" +
     "</div>" +
     "</div>" +
     "</div>";
