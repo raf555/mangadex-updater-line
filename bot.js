@@ -30,6 +30,7 @@ cron.schedule("* * * * *", async () => {
     // using update check v2
     await getUpdate2();
   } catch (e) {
+    console.log(e);
     console.log("Failed to fetch data from mangadex");
   }
 });
@@ -77,6 +78,12 @@ async function getUpdate2() {
             db.set(dbo[i] + ".latest", feed[j].pubDate);
             db.save();
             console.log("Manga with id " + dbo[i] + " is just updated");
+
+            // refresh cache
+            await axios.get(
+              "https://dex-line.glitch.me/api/cache/refresh/" + dbo[i]
+            );
+            // push update
             await pushUpdate(feed[j], Object.keys(db.get(dbo[i]).follower));
           }
           break;
@@ -150,6 +157,9 @@ async function push(id, message) {
     let month = convertTZ(new Date(), "Asia/Jakarta").getMonth() + 1;
 
     if (quota.get("month") != month) {
+      let data = quota.get("data");
+      data.push(quota.get("quota"));
+      quota.set("data", data);
       quota.set("month", month);
       quota.set("quota", 500);
     }
