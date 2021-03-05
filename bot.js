@@ -111,7 +111,7 @@ async function pushUpdate(chapt, follower) {
   let mangid = getid(chapt.mangaLink);
   let group = /Group: ([\d\D]*)\s-\sUploader/gi.exec(chapt.description)[1];
   for (let i in follower) {
-    let usergroup = userdb.get(follower + "." + mangid + ".group");
+    let usergroup = userdb.get(follower[i] + "." + mangid + ".group");
     if (usergroup != "-") {
       let grupname = grupdb.get(usergroup).name;
       if (group != grupname) {
