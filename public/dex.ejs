@@ -40,60 +40,47 @@
       <script src='https://unpkg.com/nprogress@0.2.0/nprogress.js'></script>
       <link rel='stylesheet' href='https://unpkg.com/nprogress@0.2.0/nprogress.css'/>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-       <script>
-           function load() {
-             $(".dexload").text("Loading..");
-             $(".dexload").attr("onclick","return false;");             
-             $.get("/dexstatus", (data)=>{
-               if(data.result){
-                 $(".dexload").text("Ok");
-               } else {
-                 if(data.fail == "dex"){
-                   $(".dexload").text("Failed to connect to Mangadex");
-                 } else if(data.fail == "api"){
-                   $(".dexload").text("Ok, but failed to connect to API (Can't fetch manga data)");
-                 } 
-               }
-                $(".dexload").removeAttr("onclick");
-             })
-               .fail(()=>{$(".dexload").text("Failed to check dex status");$(".dexload").removeAttr("onclick");});
-           }
-         jQuery(document).ready(function() {
-           load();
-            $(document).on("click", ".dexload", function() {
-              load();
-            });
-         });</script>
       <% if(added) { %><script src="/dex.js"></script><% } %>
    </head>
    <body>
       <%- include('global/menu')-%>
       <div class="pusher">
          <div class="ui main text container">
-            <div class="ui breadcrumb">
+            <!--<div class="ui breadcrumb">
                <a class="section" href="/">Home</a>
                <div class="divider">/</div>
                <a class="section">Mangadex</a>
             </div>
-            <div class="ui divider"></div>
+            <div class="ui divider"></div>-->
             <h2 class="ui header">
                <i class="book icon"></i>
                <div class="content">
                   Mangadex Update Notifier
-                 <small><a class="ui black circular label" style="font-size:10px;" title="What is this?" onclick="$('#info').modal('show')">?</a></small>
+                 <small><a class="ui infomodal black circular label" style="font-size:10px;" title="What is this?">?</a></small>
                   <div class="sub header">Customize your manga following list and get message every time there is an update!
                    <br><small>Mangadex status: <a class="dexload" style="cursor:pointer" title="Click to refresh"></a></small>
                   </div>
                </div>
             </h2>
             <div class="ui divider"></div>
+           <% if(!check) { %><div class="ui small warning message"><i class="announcement close icon"></i><div class="header">Announcement</div><p>Mangadex is now having a hard time, so you might get an error when searching/following manga. For more information, please go ahead to <a href="https://twitter.com/MangaDex/status/1366590814844055552" target="_blank">Mangadex Twitter</a></p></div><% } %>
            <!--<div class="ui small warning message">
-               <i class="close icon" onclick="$(this).closest('.message').transition('fade');"></i>
+               <i class="announcement close icon"></i>
                <div class="header">
                   Announcement
                </div>
-               <p>Announcement content</p>
+               <p>Mangadex is now having a hard time, so you might get an error when searching/following manga.
+                For more information, please go ahead to 
+             <a href="https://twitter.com/MangaDex/status/1366590814844055552" target="_blank">Mangadex Twitter</a></p>
             </div>-->
+           <div class="ui small info message">
+               <i class="announcement close icon"></i>
+               <div class="header">
+                  New Feature
+               </div>
+               <p>If you are familiar with Mangadex translation group, now you can choose to receive update from certain group only from each manga.
+             <br>Click advanced under last update label and there you go.</p>
+            </div>
             <% if(added) { %>
             <div class="ui middle aligned divided list">
                <div class="item">
