@@ -22,16 +22,25 @@ app.post("/callback", line.middleware(config), (req, res) => {
     });
 });
 
+const stat = require(__dirname + "/status");
+const checker = stat.checker;
+const closed = stat.closed;
+
 // check manga every minute
 cron.schedule("* * * * *", async () => {
   try {
     // await getUpdate();
 
     // using update check v2
-    await getUpdate2();
+    if (!closed && checker) {
+      await getUpdate2();
+    }
   } catch (e) {
-    console.log(e);
-    console.log("Failed to fetch data from mangadex");
+    let log = "Failed to fetch data from mangadex";
+    if (e.response) {
+      log += " with error code " + e.response.status;
+    }
+    console.log(log);
   }
 });
 
@@ -94,7 +103,21 @@ async function getUpdate2() {
 }
 
 async function pushUpdate(chapt, follower) {
+  let userdb = editJsonFile("db/_dexuser.json");
+  let grupdb = editJsonFile("db/_dexgroup.json");
+  let getid = url => {
+    return url.split("/")[url.split("/").length - 1];
+  };
+  let mangid = getid(chapt.mangaLink);
+  let group = /Group: ([\d\D]*)\s-\sUploader/gi.exec(chapt.description)[1];
   for (let i in follower) {
+    let usergroup = userdb.get(follower + "." + mangid + ".group");
+    if (usergroup != "-") {
+      let grupname = grupdb.get(usergroup).name;
+      if (group != grupname) {
+        continue;
+      }
+    }
     let bubble = createdexbubble(chapt);
     let alttext = chapt.title;
     await push(follower[i], {
@@ -138,7 +161,7 @@ async function handleEvent(event) {
     case "unfollow":
       return unfollowevent(event);
     case "message":
-      return event.message.text ? parse(event) : Promise.resolve(null);
+      return event.message.text ? parsemessage(event) : Promise.resolve(null);
   }
 }
 
@@ -157,11 +180,13 @@ async function push(id, message) {
     let month = convertTZ(new Date(), "Asia/Jakarta").getMonth() + 1;
 
     if (quota.get("month") != month) {
+      let kuota = 500;
+
       let data = quota.get("data");
-      data.push(quota.get("quota"));
+      data.push(kuota - quota.get("quota"));
       quota.set("data", data);
       quota.set("month", month);
-      quota.set("quota", 500);
+      quota.set("quota", kuota);
     }
     quota.set("quota", quota.get("quota") - 1);
     quota.save();
@@ -217,7 +242,7 @@ async function followevent(event) {
   });
 }
 
-async function parse(event) {
+async function parsemessage(event) {
   let textarr = event.message.text.split(" ");
   let text = textarr[0];
   let sign = text[0];
@@ -228,7 +253,15 @@ async function parse(event) {
     if (added) {
       switch (cmd) {
         case "dex":
-          return dex(event);
+          if (!closed) {
+            return dex(event);
+          } else {
+            return reply(event, {
+              type: "text",
+              text:
+                "The mangadex updater will be turned off until mangadex is up again, sorry for the inconvenience.\n\nhttps://twitter.com/MangaDex/status/1366590814844055552"
+            });
+          }
         case "dex2":
           return event.source.userId == process.env.admin_id
             ? dex(event, true)
@@ -365,6 +398,7 @@ async function dex(event, all) {
   }
 
   if (_user.get(event.source.userId)) {
+    let grupdb = editJsonFile("db/_dexgroup.json");
     let usermanga = Object.keys(_user.get(event.source.userId));
     let param = getparam(event.message.text);
     let bubbleandregex;
@@ -383,9 +417,29 @@ async function dex(event, all) {
         ];
         for (let j = 0; j < usermanga.length; j++) {
           if (parseInt(usermanga[j]) == mangid) {
-            bubbleandregex = handledexbubble(feed[i], param);
-            if (bubbleandregex[0] != null) {
-              carousel.contents.push(bubbleandregex[0]);
+            if (
+              _user.get(event.source.userId + "." + usermanga[j] + ".group") ==
+              "-"
+            ) {
+              bubbleandregex = handledexbubble(feed[i], param);
+              if (bubbleandregex[0] != null) {
+                carousel.contents.push(bubbleandregex[0]);
+              }
+            } else {
+              let grup = /Group: ([\d\D]*)\s-\sUploader/gi.exec(
+                feed[i].description
+              )[1];
+              if (
+                grup ==
+                grupdb.get(
+                  _user.get(event.source.userId + "." + usermanga[j] + ".group")
+                ).name
+              ) {
+                bubbleandregex = handledexbubble(feed[i], param);
+                if (bubbleandregex[0] != null) {
+                  carousel.contents.push(bubbleandregex[0]);
+                }
+              }
             }
             break;
           }
@@ -450,16 +504,28 @@ async function dex(event, all) {
       });
     }
 
-    return reply(event, {
-      type: "flex",
-      altText: "Mangadex Update",
-      contents: carousel,
-      sender: {
-        name: "MangaDex Update",
-        iconUrl: "https://mangadex.org/favicon-192x192.png"
-      },
-      quickReply: qr
-    });
+    let arrrep = [
+      {
+        type: "flex",
+        altText: "Mangadex Update",
+        contents: carousel,
+        sender: {
+          name: "MangaDex Update",
+          iconUrl: "https://mangadex.org/favicon-192x192.png"
+        },
+        quickReply: qr
+      }
+    ];
+
+    /*if (!checker) {
+      arrrep.push({
+        type: "text",
+        text:
+          "Update checker is disabled to help Mangadex recover, sorry for the inconvenience."
+      });
+    }*/
+
+    return reply(event, arrrep);
   } else {
     return reply(event, {
       type: "text",
