@@ -31,9 +31,9 @@ const app = express.Router(),
   mclient = new Mangadex();
 
 // bot / site status
-const stat = require(__dirname + "/status")
+const stat = require(__dirname + "/status");
 const closed = stat.closed;
-const check = stat.checker
+const check = stat.checker;
 
 // manga limit
 const limit = 10;
@@ -194,7 +194,7 @@ app.get("/dex", isloggedin, async (req, res) => {
               ada = true;
             }
 
-            searchu += searchout(
+            searchu += await searchout(
               req.session.uid,
               search.titles[i],
               false,
@@ -217,9 +217,9 @@ app.get("/dex", isloggedin, async (req, res) => {
               ada = true;
             }
             if (req.query.refresh && req.query.refresh == 1) {
-              searchu += searchout(req.session.uid, search, true, ada);
+              searchu += await searchout(req.session.uid, search, true, ada);
             } else {
-              searchu += searchout(req.session.uid, search, false, ada);
+              searchu += await searchout(req.session.uid, search, false, ada);
             }
           }
         } catch (e) {
@@ -246,7 +246,7 @@ app.get("/dex", isloggedin, async (req, res) => {
           let search;
           try {
             search = await getmanga(data[i], cache);
-            searchu += searchout(req.session.uid, search);
+            searchu += await searchout(req.session.uid, search);
           } catch (e) {
             searchu = "Failed to get manga data..";
             break;
@@ -316,11 +316,13 @@ app.get("/api/dex/folunfol/:id", async (req, res) => {
       // unfollow a manga
       _user.unset(uid + "." + id);
       _manga.unset(id + ".follower." + uid);
-
       if (Object.keys(_manga.get(id + ".follower")).length - 1 <= 0) {
         try {
           await unfolmanga(id);
           _manga.unset(req.params.id);
+          console.log(
+            "Manga with id " + req.params.id + " is unfollowed from dex"
+          );
         } catch (e) {
           res.send({ result: false, reason: "Unknown error occured" });
           return false;
@@ -342,6 +344,9 @@ app.get("/api/dex/folunfol/:id", async (req, res) => {
       if (!mangafound) {
         try {
           await folmanga(id);
+          console.log(
+            "Manga with id " + req.params.id + " is followed from dex"
+          );
         } catch (e) {
           res.send({ result: false, reason: "Unknown error occured" });
           return false;
@@ -499,14 +504,13 @@ async function isloggedin(req, res, next) {
   }
 }
 
-function makegrupoption(id, mangaid, data) {
+async function makegrupoption(id, mangaid, data) {
   try {
     let uid = id;
     let userdb = editJsonFile("db/_dexuser.json");
     let grupdb = editJsonFile("db/_dexgroup.json");
 
     let out = "";
-    let selected = {};
     if (userdb.get(uid + "." + mangaid + ".group") == "-") {
       out += '<option value="-" selected>None</option>';
     } else {
@@ -525,14 +529,9 @@ function makegrupoption(id, mangaid, data) {
     }
     for (let i in grup) {
       if (!grupdb.get(grup[i].toString())) {
-        let name = getgroupname(grup[i])
-          .then(data => {
-            grupdb.set(grup[i] + ".name", data);
-            grupdb.save();
-          })
-          .catch(err => {
-            return false;
-          });
+        let name = await getgroupname(grup[i]);
+        grupdb.set(grup[i] + ".name", name);
+        grupdb.save();
       }
       if (userdb.get(uid + "." + mangaid + ".group") != "-") {
         if (grup[i].toString() != userdb.get(uid + "." + mangaid + ".group")) {
@@ -556,6 +555,7 @@ function makegrupoption(id, mangaid, data) {
     }
     return out;
   } catch (e) {
+    console.log(e);
     return null;
   }
 }
@@ -586,7 +586,7 @@ function parseurl(url, int = true) {
   return null;
 }
 
-function searchout(
+async function searchout(
   id,
   searchdata,
   fromself = true,
@@ -713,16 +713,14 @@ function searchout(
       : '<div class="ui left floated accordion field">' +
         '<div class="title">' +
         '<i class="icon dropdown"></i>' +
-        "Advanced" +
+        "Advanced Option" +
         "</div>" +
         '<div class="content field">' +
         "<label>Get update only from certain group: </label><br>" +
         '<select class="ui dropdown" data-id="' +
         search.id +
         '">' +
-        (id == process.env.admin_id
-          ? makegrupoption(id, search.id.toString(), searchdata)
-          : "") +
+        (await makegrupoption(id, search.id.toString(), searchdata)) +
         "</select>" +
         "</div>" +
         "</div>") +
