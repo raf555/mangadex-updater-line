@@ -34,19 +34,14 @@ const app = express.Router(),
 const stat = require(__dirname + "/status");
 const closed = stat.closed;
 const check = stat.checker;
+// api endpoint
+const endpoint = stat.endpointlist[stat.endpointidx];
 
 // manga limit
 const limit = 10;
 
 // login
 mclient.agent.login(process.env.dex_id, process.env.dex_pw, false);
-
-// api endpoint
-let endpointlist = [
-  "https://api.mangadex.org/v2/",
-  "https://mangadex.org/api/v2/"
-];
-let endpoint = endpointlist[1];
 
 app.use(session(session_options));
 
@@ -223,7 +218,7 @@ app.get("/dex", isloggedin, async (req, res) => {
             }
           }
         } catch (e) {
-          if (e.response.status == 404) {
+          if (e.response && e.response.status == 404) {
             searchu = "";
           } else {
             searchu = "Failed to get manga data..";
@@ -449,9 +444,9 @@ app.get("/api/cache/refresh/:id", async (req, res) => {
     if (myCache.has("manga-" + id)) {
       myCache.del("manga-" + id);
     }
-    await getmanga(id);
+    let data = await getmanga(id);
     console.log("Manga cache with id " + id + " is just updated");
-    res.send({ res: "ok" });
+    res.send(data);
   } catch (e) {
     res.send({ res: "no" });
   }
@@ -512,7 +507,8 @@ async function makegrupoption(id, mangaid, data) {
 
     let out = "";
     if (userdb.get(uid + "." + mangaid + ".group") == "-") {
-      out += '<option value="-" selected>None</option>';
+      out +=
+        '<option value="-" selected>× None</option>';
     } else {
       out +=
         '<option value="' +
@@ -542,7 +538,7 @@ async function makegrupoption(id, mangaid, data) {
             grupdb.get(grup[i].toString()).name +
             "</option>";
         } else {
-          out += '<option value="-">None</option>';
+          out += '<option value="-">× None</option>';
         }
       } else {
         out +=

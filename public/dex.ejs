@@ -55,7 +55,7 @@
             <h2 class="ui header">
                <i class="book icon"></i>
                <div class="content">
-                  Mangadex Update Notifier
+                  Mangadex Update Notifier for LINE <i class="linechat icon"></i>
                  <small><a class="ui infomodal black circular label" style="font-size:10px;" title="What is this?">?</a></small>
                   <div class="sub header">Customize your manga following list and get message every time there is an update!
                    <br><small>Mangadex status: <a class="dexload" style="cursor:pointer" title="Click to refresh"></a></small>
@@ -63,7 +63,7 @@
                </div>
             </h2>
             <div class="ui divider"></div>
-           <% if(!check) { %><div class="ui small warning message"><i class="announcement close icon"></i><div class="header">Announcement</div><p>Mangadex is now having a hard time, so you might get an error when searching/following manga. For more information, please go ahead to <a href="https://twitter.com/MangaDex/status/1366590814844055552" target="_blank">Mangadex Twitter</a></p></div><% } %>
+           <% if(!check) { %><div class="ui tiny warning message"><i class="announcement close icon"></i><div class="header">Announcement</div><p>Mangadex is now having a hard time, so you might get an error when searching/following manga. For more information, please go ahead to <a href="https://twitter.com/MangaDex/status/1366590814844055552" target="_blank">Mangadex Twitter</a></p></div><% } %>
            <!--<div class="ui small warning message">
                <i class="announcement close icon"></i>
                <div class="header">
@@ -73,14 +73,14 @@
                 For more information, please go ahead to 
              <a href="https://twitter.com/MangaDex/status/1366590814844055552" target="_blank">Mangadex Twitter</a></p>
             </div>-->
-           <div class="ui small info message">
+           <!--<div class="ui tiny info message">
                <i class="announcement close icon"></i>
                <div class="header">
                   New Feature
                </div>
-               <p>If you are familiar with Mangadex translation group, now you can choose to receive update from certain group only from each manga.
-             <br>Click advanced option label under last update label and there you go.</p>
-            </div>
+               <p>If you are familiar with Mangadex translation group, now you can choose to receive update from certain group from each manga.
+             <br>How: Click <b>Advanced Option</b> label under last update label and choose the group.</p>
+            </div>-->
             <% if(added) { %>
             <div class="ui middle aligned divided list">
                <div class="item">
@@ -109,7 +109,7 @@
             </div>
             <% } else { %>
            <center>
-            <h1 class="ui header">You have to add Bot first to be able to use this.</h1>
+            <h1 class="ui header">You have to add Bot (or unblock) first to be able to use this.</h1>
             <a href="https://line.me/R/ti/p/@228kmsfw">
             <button class="ui positive button">
             <i class="linechat icon"></i>
@@ -155,7 +155,9 @@
             <h2>How to use</h2>
             <ol>
             <li>Add bot by clicking <a href="https://line.me/R/ti/p/@228kmsfw">this</a> link.</li>
-            <li>Start following a manga using this site!<br><small>You can search manga using title / id / mangadex url</small></li>
+            <li>Start following a manga using this site!<br><small>You can search manga using title / id / mangadex url.</small></li>
+            <li><b>New</b> You can receive update from a certain group each manga.</li>
+            <img class="ui image" src="https://cdn.glitch.com/24c8d286-abd0-4de6-9b8b-da956ea8bdb3%2Fezgif-7-b0a60eeb249b.gif?v=1615007524866" />
             <li>The Manga(s) in this site is sometimes not synced because it is cached, you can refresh the data by doing this.</li>
             <img class="ui image" src="https://cdn.glitch.com/24c8d286-abd0-4de6-9b8b-da956ea8bdb3%2Frefreshmanga.gif?v=1614511535187" />
             <li>If you are following or searching manga and error happens, this status will refresh by itself. If something happen to mangadex, the status will changes.</li>
