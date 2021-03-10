@@ -24,7 +24,7 @@ app.post("/callback", line.middleware(config), (req, res) => {
 const stat = require(__dirname + "/status");
 const checker = stat.checker;
 const closed = stat.closed;
-const endpoint = stat.endpointlist[stat.endpointidx];
+const endpoint = stat.endpoint;
 
 // check manga every minute
 cron.schedule("* * * * *", async () => {
@@ -44,24 +44,6 @@ cron.schedule("* * * * *", async () => {
   }
 });
 
-// check dex update
-async function getUpdate() {
-  let file = editJsonFile("db/mangadex.json");
-  let data = await axios.get(process.env.rss_url);
-  let feed = xmlparser.parse(data.data).rss.channel.item;
-  //let date = datetostr(convertTZ(new Date(feed[0].pubDate), "Asia/Jakarta"));
-  let date = feed[0].pubDate;
-
-  console.log("1 min mangadex has passed");
-
-  if (file.get("latest") != date) {
-    file.set("latest", date);
-    file.save();
-    console.log("mangadex updated");
-    return dex(null, true);
-  }
-}
-
 // check dex update v2
 async function getUpdate2() {
   console.log("1 min mangadex has passed");
@@ -71,9 +53,6 @@ async function getUpdate2() {
   let data = await getuserfollowing();
   let chapters = data.chapters;
   let dbo = Object.keys(db.get());
-  let getid = url => {
-    return url.split("/")[url.split("/").length - 1];
-  };
 
   for (let i = 0; i < dbo.length; i++) {
     if (Object.keys(db.get(dbo[i]).follower).length > 0) {
@@ -86,20 +65,27 @@ async function getUpdate2() {
           let mangdate = pubDate(new Date(chapters[j].timestamp * 1000));
           if (db.get(dbo[i]).latest != mangdate) {
             db.set(dbo[i] + ".latest", mangdate);
-            db.save();
             console.log("Manga with id " + dbo[i] + " is just updated");
-
-            // refresh cache
-            let cache = await axios.get(
-              "https://dex-line.glitch.me/api/cache/refresh/" + dbo[i]
-            );
-            // push update
-            await pushUpdate(
-              data,
-              j,
-              Object.keys(db.get(dbo[i]).follower),
-              cache.data
-            );
+            try {
+              // refresh cache
+              let cache = await axios.get(
+                "https://dex-line.glitch.me/api/cache/refresh/" + dbo[i]
+              );
+              db.save();
+              // push update
+              await pushUpdate(
+                data,
+                j,
+                Object.keys(db.get(dbo[i]).follower),
+                cache.data
+              );
+            } catch (e) {
+              console.log(
+                "Update manga with id " +
+                  dbo[i] +
+                  " is reverted because of request error, will try again in one minute"
+              );
+            }
           }
           break;
         }
@@ -130,13 +116,14 @@ async function pushUpdate(feed, idx, follower, data) {
       }
     }
     let bubble = createdexbubble(chapter, feed.groups);
+
     let alttext =
       chapter.mangaTitle +
       " - Chapter " +
       chapter.chapter +
       (chapter.title ? " - " + chapter.title : "");
 
-    let push = await push(follower[i], {
+    let pushres = await push(follower[i], {
       type: "flex",
       altText: alttext,
       contents: bubble,
@@ -165,10 +152,15 @@ async function pushUpdate(feed, idx, follower, data) {
         ]
       }
     });
-    if (push) {
+    if (pushres) {
       console.log(
-        "Manga update with id " + mangid + " is just pushed to " + follower[i]
+        "Manga update with id " +
+          mangid +
+          " is just pushed to user with id " +
+          follower[i]
       );
+    } else {
+      console.log("Failed to push message to user with id " + follower[i]);
     }
   }
 }
@@ -497,9 +489,9 @@ async function dex(event, all) {
       let out;
       let regex = bubbleandregex[1];
       if (regex.name) {
-        out = "There is no manga that match with 「" + param + "」 ";
+        param = param.split(" -chapter ");
+        out = "There is no manga that match with 「" + param[0] + "」 ";
         if (regex.chap) {
-          param = param.split(" -chapter ");
           out += "and chapter " + param[1].trim();
         }
         out += " in your latest following list.";

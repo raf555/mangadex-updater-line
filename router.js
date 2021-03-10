@@ -35,7 +35,7 @@ const stat = require(__dirname + "/status");
 const closed = stat.closed;
 const check = stat.checker;
 // api endpoint
-const endpoint = stat.endpointlist[stat.endpointidx];
+const endpoint = stat.endpoint;
 
 // manga limit
 const limit = 10;
@@ -156,6 +156,7 @@ app.get("/dex", isloggedin, async (req, res) => {
   let userdb = editJsonFile("db/user.json");
   let add = userdb.get(uid) && !userdb.get(uid + ".block");
   let cache = !(req.query.nocache && req.query.nocache == 1); // refresh cache
+  let darkmode = req.query.dark && req.query.dark == 1;
 
   if (add) {
     // if there is search param
@@ -190,6 +191,7 @@ app.get("/dex", isloggedin, async (req, res) => {
             }
 
             searchu += await searchout(
+              darkmode,
               req.session.uid,
               search.titles[i],
               false,
@@ -212,9 +214,23 @@ app.get("/dex", isloggedin, async (req, res) => {
               ada = true;
             }
             if (req.query.refresh && req.query.refresh == 1) {
-              searchu += await searchout(req.session.uid, search, true, ada);
+              if (_manga.get(query)) {
+                searchu += await searchout(
+                  darkmode,
+                  req.session.uid,
+                  search,
+                  true,
+                  ada
+                );
+              }
             } else {
-              searchu += await searchout(req.session.uid, search, false, ada);
+              searchu += await searchout(
+                darkmode,
+                req.session.uid,
+                search,
+                false,
+                ada
+              );
             }
           }
         } catch (e) {
@@ -241,7 +257,7 @@ app.get("/dex", isloggedin, async (req, res) => {
           let search;
           try {
             search = await getmanga(data[i], cache);
-            searchu += await searchout(req.session.uid, search);
+            searchu += await searchout(darkmode, req.session.uid, search);
           } catch (e) {
             searchu = "Failed to get manga data..";
             break;
@@ -452,6 +468,30 @@ app.get("/api/cache/refresh/:id", async (req, res) => {
   }
 });
 
+/* relogin to dex */
+app.get("/api/dex/relogin", async (req, res) => {
+  let resu = false;
+  if (/https:\/\/dex-line.glitch\.me/.test(req.get("referer"))) {
+    try {
+      await mclient.agent.login(process.env.dex_id, process.env.dex_pw, false);
+      resu = true;
+    } catch (e) {
+      console.log(e);
+      console.log("Failed to relogin");
+    }
+  }
+  res.send({ result: resu });
+});
+
+/* view db */
+app.get("/api/viewdb/:name", async (req, res) => {
+  if (req.session.uid && req.session.uid == process.env.admin_id) {
+    res.sendFile(__dirname + "/db/" + req.params.name);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
 /* mangadex status */
 app.get("/dexstatus", async (req, res) => {
   let dex = true;
@@ -506,17 +546,10 @@ async function makegrupoption(id, mangaid, data) {
     let grupdb = editJsonFile("db/_dexgroup.json");
 
     let out = "";
-    if (userdb.get(uid + "." + mangaid + ".group") == "-") {
-      out +=
-        '<option value="-" selected>× None</option>';
-    } else {
-      out +=
-        '<option value="' +
-        userdb.get(uid + "." + mangaid + ".group") +
-        '" selected>' +
-        grupdb.get(userdb.get(uid + "." + mangaid + ".group")).name +
-        "</option>";
-    }
+    out +=
+      '<option value="-" ' +
+      (userdb.get(uid + "." + mangaid + ".group") == "-" ? "selected" : "") +
+      ">× None</option>";
     let chapt = data.chapters;
     let grup = [];
     for (let i in chapt) {
@@ -529,25 +562,16 @@ async function makegrupoption(id, mangaid, data) {
         grupdb.set(grup[i] + ".name", name);
         grupdb.save();
       }
-      if (userdb.get(uid + "." + mangaid + ".group") != "-") {
-        if (grup[i].toString() != userdb.get(uid + "." + mangaid + ".group")) {
-          out +=
-            '<option value="' +
-            grup[i].toString() +
-            '">' +
-            grupdb.get(grup[i].toString()).name +
-            "</option>";
-        } else {
-          out += '<option value="-">× None</option>';
-        }
-      } else {
-        out +=
-          '<option value="' +
-          grup[i].toString() +
-          '">' +
-          grupdb.get(grup[i].toString()).name +
-          "</option>";
-      }
+      out +=
+        '<option value="' +
+        grup[i].toString() +
+        '" ' +
+        (grup[i].toString() == userdb.get(uid + "." + mangaid + ".group")
+          ? "selected"
+          : "") +
+        ">" +
+        grupdb.get(grup[i].toString()).name +
+        "</option>";
     }
     return out;
   } catch (e) {
@@ -583,6 +607,7 @@ function parseurl(url, int = true) {
 }
 
 async function searchout(
+  dark,
   id,
   searchdata,
   fromself = true,
@@ -662,18 +687,19 @@ async function searchout(
     "</span></a>" +
     '<div class="meta">' +
     "<p>" +
-    '<a style="color:#666666" title="Rating"><i class="star icon"></i> ' +
+    '<span title="Rating" style="cursor:pointer"><i class="star icon"></i> ' +
     (search.rating.bayesian || search.rating.value)
       .toFixed(2)
       .replace(".", ",") +
-    "</a>" +
-    '<a style="color:#666666" title="Views"><i class="eye icon"></i> ' +
+    "</span>" +
+    '<span title="Views" style="cursor:pointer"><i class="eye icon"></i> ' +
     search.views.toLocaleString("id-ID") +
-    '<a style="color:#666666" title="Follower" id="' +
+    "</span>" +
+    '<span title="Follower" style="cursor:pointer" id="' +
     search.id +
     '"><i class="bookmark icon"></i> ' +
     count(search.id) +
-    "</a>" +
+    "</span>" +
     "</p>" +
     "</div>" +
     '<div class="description">' +
@@ -694,11 +720,12 @@ async function searchout(
         search.id +
         '" title="Click to refresh data">Last updated on ' +
         findlatest(searchdata) +
-        " UTC+7" +
         "</div>") +
     '<button class="ui right floated folunfol ' +
     (ada ? "yellow" : "green") +
-    ' button" data-id="' +
+    " button " +
+    (dark ? "inverted" : "") +
+    '" data-id="' +
     search.id +
     '">' +
     '<i class="bookmark icon"></i>' +
@@ -706,14 +733,18 @@ async function searchout(
     "</button>" +
     (!fromself
       ? ""
-      : '<div class="ui left floated accordion field">' +
+      : '<br><br><div class="ui left floated accordion field ' +
+        (dark ? "inverted" : "") +
+        '">' +
         '<div class="title">' +
         '<i class="icon dropdown"></i>' +
         "Advanced Option" +
         "</div>" +
         '<div class="content field">' +
         "<label>Get update only from certain group: </label><br>" +
-        '<select class="ui dropdown" data-id="' +
+        '<select class="ui dropdown ' +
+        (dark ? "inverted" : "") +
+        '" data-id="' +
         search.id +
         '">' +
         (await makegrupoption(id, search.id.toString(), searchdata)) +
