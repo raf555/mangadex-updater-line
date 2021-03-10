@@ -13,11 +13,9 @@
          src="https://code.jquery.com/jquery-3.5.1.min.js"
          crossorigin="anonymous"
          ></script>
-      <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
-      <link
-         rel="stylesheet"
-         href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css"
-         />
+      <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.min.css">
+      <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.min.js"></script>
+      <script src='https://cdn.jsdelivr.net/npm/darkmode-js@1.5.7/lib/darkmode-js.min.js'></script>
       <style type="text/css">
          body {
          background-color: #FFFFFF;
@@ -28,13 +26,24 @@
          .main.container {
          margin-top: 7em;
          }
-         .wireframe {
-         margin-top: 2em;
-         }
          .ui.footer.segment {
          margin: 5em 0em 0em;
          padding: 5em 0em;
          }
+        .dexload{
+          cursor: pointer;
+        }
+        .inputdm::selection{
+          background-color: #cce2ff;
+          color: rgba(0,0,0,.87)
+        }
+        .ui.segment.output{
+          height:500px;
+          overflow-x:scroll;
+        }
+        .infomodal{
+          font-size:10px;
+        }
       </style>
       <%- include('global/https')-%>
       <script src='https://unpkg.com/nprogress@0.2.0/nprogress.js'></script>
@@ -44,7 +53,6 @@
    </head>
    <body>
       <%- include('global/menu')-%>
-      <div class="pusher">
          <div class="ui main text container">
             <!--<div class="ui breadcrumb">
                <a class="section" href="/">Home</a>
@@ -52,35 +60,35 @@
                <a class="section">Mangadex</a>
             </div>
             <div class="ui divider"></div>-->
-            <h2 class="ui header">
+            <h2 class="ui header darkmode-ignore">
                <i class="book icon"></i>
                <div class="content">
-                  Mangadex Update Notifier
-                 <small><a class="ui infomodal black circular label" style="font-size:10px;" title="What is this?">?</a></small>
+                  Mangadex Update Notifier <i class="linechat icon"></i>
+                 <small><a class="ui infomodal black circular label" title="What is this?">?</a></small>
                   <div class="sub header">Customize your manga following list and get message every time there is an update!
-                   <br><small>Mangadex status: <a class="dexload" style="cursor:pointer" title="Click to refresh"></a></small>
+                   <br><small>Mangadex status: <a class="dexload" title="Click to refresh"></a></small>
                   </div>
                </div>
             </h2>
             <div class="ui divider"></div>
-           <% if(!check) { %><div class="ui small warning message"><i class="announcement close icon"></i><div class="header">Announcement</div><p>Mangadex is now having a hard time, so you might get an error when searching/following manga. For more information, please go ahead to <a href="https://twitter.com/MangaDex/status/1366590814844055552" target="_blank">Mangadex Twitter</a></p></div><% } %>
+           <% if(!check) { %><div class="ui tiny warning message"><i class="announcement close icon"></i><div class="header">Announcement</div><p>Mangadex is now having a hard time, so you might get an error when searching/following manga. For more information, please go ahead to <a href="https://twitter.com/MangaDex/status/1366590814844055552" target="_blank">Mangadex Twitter</a></p></div><% } %>
            <!--<div class="ui small warning message">
                <i class="announcement close icon"></i>
                <div class="header">
                   Announcement
                </div>
-               <p>Mangadex is now having a hard time, so you might get an error when searching/following manga.
+               <p>Mangadex is now having a hard time (again), so you might be getting an error when searching / following manga.
                 For more information, please go ahead to 
-             <a href="https://twitter.com/MangaDex/status/1366590814844055552" target="_blank">Mangadex Twitter</a></p>
+             <a href="https://twitter.com/MangaDex/status/1368342721308557313" target="_blank">Mangadex Twitter</a>.</p>
             </div>-->
-           <div class="ui small info message">
+           <!--<div class="ui tiny info message">
                <i class="announcement close icon"></i>
                <div class="header">
                   New Feature
                </div>
-               <p>If you are familiar with Mangadex translation group, now you can choose to receive update from certain group only from each manga.
-             <br>Click advanced option label under last update label and there you go.</p>
-            </div>
+               <p>If you are familiar with Mangadex translation group, now you can choose to receive update from certain group from each manga.
+             <br>How: Click <b>Advanced Option</b> label under last update label and choose the group.</p>
+            </div>-->
             <% if(added) { %>
             <div class="ui middle aligned divided list">
                <div class="item">
@@ -89,19 +97,19 @@
                         <div class="ui fluid large input icon searchinput">
                            <input type="text" placeholder="Search title (press enter to search new title or dex id or dex url)" id="search" autocomplete="off" value="<%= q||'' %>" />
                           <i class="circular sort link icon sortbtn" style="display:none" title="Sort by last update"></i>
-                          <div class="ui positive button getself" style="display:none">My Following List</div>
+                          <div class="ui white button getself darkmode-ignore" style="display:none">My Following List</div>
                         </div>
                      </form>
                   </div>
                </div>
             </div>
-            <div class="ui segment output" style="height:500px;overflow-x:scroll">
+            <div class="ui segment output">
                <div class="ui divided items">
                   <%-out %>
                </div>
             </div>
             <div class="ui middle aligned divided list">
-               <div class="item">
+               <div class="item darkmode-ignore">
                   <div class="right floated content">
                      Showing <span id="akeh">0</span> of <span id="totakeh">0</span> Manga.
                   </div>
@@ -109,7 +117,7 @@
             </div>
             <% } else { %>
            <center>
-            <h1 class="ui header">You have to add Bot first to be able to use this.</h1>
+            <h1 class="ui header">You have to add Bot (or unblock) first to be able to use this.</h1>
             <a href="https://line.me/R/ti/p/@228kmsfw">
             <button class="ui positive button">
             <i class="linechat icon"></i>
@@ -120,7 +128,6 @@
             <% } %>
          </div>
          <%- include('global/footer')-%>
-      </div>
 
       <div class="ui basic modal" id="maxinfo">
          <div class="ui icon header">
@@ -155,7 +162,9 @@
             <h2>How to use</h2>
             <ol>
             <li>Add bot by clicking <a href="https://line.me/R/ti/p/@228kmsfw">this</a> link.</li>
-            <li>Start following a manga using this site!<br><small>You can search manga using title / id / mangadex url</small></li>
+            <li>Start following a manga using this site!<br><small>You can search manga using title / id / mangadex url.</small></li>
+            <li><b>New</b> You can receive update from a certain group each manga.</li>
+            <img class="ui image" src="https://cdn.glitch.com/24c8d286-abd0-4de6-9b8b-da956ea8bdb3%2Fezgif-7-b0a60eeb249b.gif?v=1615007524866" />
             <li>The Manga(s) in this site is sometimes not synced because it is cached, you can refresh the data by doing this.</li>
             <img class="ui image" src="https://cdn.glitch.com/24c8d286-abd0-4de6-9b8b-da956ea8bdb3%2Frefreshmanga.gif?v=1614511535187" />
             <li>If you are following or searching manga and error happens, this status will refresh by itself. If something happen to mangadex, the status will changes.</li>
@@ -165,6 +174,7 @@
             <ol>
             <li>This bot only sends manga update with English language.</li>
             <li>Bot (should) checks update every one minute.</li>
+            <li>All date and time in this bot is set to UTC+7.</li>
             <li>You can only follow at max 10 mangas.</li>
             <li>If bot keep sending you a same update, it is a most likely that MangaDex itself is experiencing an issue, please bear with it for a moment (you can mute bot until it solves).</li>
             <li>If you think there is an update but bot does not send a any update, there is a high chance that Push Messages Quota is exceeded, LINE limits the push quota only 500 for each month.</li>
