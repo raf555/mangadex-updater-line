@@ -575,7 +575,6 @@ async function makegrupoption(id, mangaid, data) {
     }
     return out;
   } catch (e) {
-    console.log(e);
     return null;
   }
 }
@@ -641,23 +640,33 @@ async function searchout(
         data.chapters[i].language == "gb" ||
         data.chapters[i].language == "en"
       ) {
+        let latestchapt = "Chapter " + data.chapters[i].chapter;
+        if (data.chapters[i].title) {
+          latestchapt += " - " + data.chapters[i].title;
+        }
         if (!custgrup) {
-          return datetostr(
-            convertTZ(
-              new Date(data.chapters[i].timestamp * 1000),
-              "Asia/Jakarta"
-            )
-          );
-        } else {
-          if (data.chapters[i].groups[0].toString() != usergrup) {
-            continue;
-          } else {
-            return datetostr(
+          return [
+            datetostr(
               convertTZ(
                 new Date(data.chapters[i].timestamp * 1000),
                 "Asia/Jakarta"
               )
-            );
+            ),
+            latestchapt
+          ];
+        } else {
+          if (data.chapters[i].groups[0].toString() != usergrup) {
+            continue;
+          } else {
+            return [
+              datetostr(
+                convertTZ(
+                  new Date(data.chapters[i].timestamp * 1000),
+                  "Asia/Jakarta"
+                )
+              ),
+              latestchapt
+            ];
           }
         }
       }
@@ -665,11 +674,17 @@ async function searchout(
   };
 
   let search = fromgetmanga ? searchdata.manga : searchdata;
+  let latest = fromself ? findlatest(searchdata) : null;
 
   // remove dex lang tag
   search.description = search.description.replace(/\[[^\]]+\]/g, "");
 
   let url = "https://mangadex.org/title/" + search.id;
+
+  if (fromself && !latest) {
+    return "";
+  }
+    
   let out =
     '<div class="item list">' +
     '<div class="image">' +
@@ -700,6 +715,11 @@ async function searchout(
     '"><i class="bookmark icon"></i> ' +
     count(search.id) +
     "</span>" +
+    (!fromself
+      ? ""
+      : '<br><span title="Latest Chapter" style="cursor:pointer"><i class="sync alternate icon"></i> ' +
+        latest[1] +
+        "</span>") +
     "</p>" +
     "</div>" +
     '<div class="description">' +
@@ -719,7 +739,7 @@ async function searchout(
       : '<div class="ui left floated label lastup" style="cursor:pointer;" data-id="' +
         search.id +
         '" title="Click to refresh data">Last updated on ' +
-        findlatest(searchdata) +
+        latest[0] +
         "</div>") +
     '<button class="ui right floated folunfol ' +
     (ada ? "yellow" : "green") +

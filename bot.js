@@ -17,7 +17,8 @@ app.post("/callback", line.middleware(config), (req, res) => {
   Promise.all(req.body.events.map(handleEvent))
     .then(result => res.json(result))
     .catch(e => {
-      console.log(e);
+      // console.log(e);
+      console.log("Error when sending request to LINE");
     });
 });
 
@@ -63,6 +64,7 @@ async function getUpdate2() {
       for (let j = 0; j < chapters.length; j++) {
         if (chapters[j].mangaId.toString() == dbo[i]) {
           let mangdate = pubDate(new Date(chapters[j].timestamp * 1000));
+          let temp = db.get(dbo[i]).latest;
           if (db.get(dbo[i]).latest != mangdate) {
             db.set(dbo[i] + ".latest", mangdate);
             console.log("Manga with id " + dbo[i] + " is just updated");
@@ -80,6 +82,8 @@ async function getUpdate2() {
                 cache.data
               );
             } catch (e) {
+              //db.set(dbo[i] + ".latest", temp);
+              //db.save();
               console.log(
                 "Update manga with id " +
                   dbo[i] +
@@ -115,7 +119,7 @@ async function pushUpdate(feed, idx, follower, data) {
         continue;
       }
     }
-    let bubble = createdexbubble(chapter, feed.groups);
+    let bubble = dynamicheight(createdexbubble(chapter, feed.groups), true);
 
     let alttext =
       chapter.mangaTitle +
@@ -136,9 +140,9 @@ async function pushUpdate(feed, idx, follower, data) {
           {
             type: "action",
             action: {
-              type: "message",
+              type: "uri",
               label: "Edit",
-              text: "!edit"
+              uri: process.env.liff_url
             }
           },
           {
@@ -253,7 +257,7 @@ async function followevent(event) {
       (event.source.userId == process.env.admin_id
         ? "• !dex2\n=> to see all following list in the account.\n\n"
         : "") +
-      "• !edit\n=> to edit and see your following list.\n\n" +
+      "• !edit (deprecated)\n=> to edit and see your following list.\n\n" +
       "If you find any problem, please make an issue at https://github.com/raf555/mangadex-updater-line",
     quickReply: {
       items: [
@@ -268,9 +272,9 @@ async function followevent(event) {
         {
           type: "action",
           action: {
-            type: "message",
-            label: "!edit",
-            text: "!edit"
+            type: "uri",
+            label: "Edit",
+            uri: process.env.liff_url
           }
         }
       ]
@@ -468,9 +472,9 @@ async function dex(event, all) {
         {
           type: "action",
           action: {
-            type: "message",
+            type: "uri",
             label: "Edit",
-            text: "!edit"
+            uri: process.env.liff_url
           }
         },
         {
@@ -514,7 +518,7 @@ async function dex(event, all) {
       {
         type: "flex",
         altText: "Mangadex Update",
-        contents: carousel,
+        contents: dynamicheight(carousel),
         sender: {
           name: "MangaDex Update",
           iconUrl: "https://mangadex.org/favicon-192x192.png"
@@ -538,6 +542,51 @@ async function dex(event, all) {
       text: "You haven't followed any manga."
     });
   }
+}
+
+/*
+@param
+- data = bubble / carousel, object
+- isbubble = boolean
+*/
+function dynamicheight(data, isbubble) {
+  /* https://stackoverflow.com/questions/14484787/wrap-text-in-javascript */
+  const wraptext = (s, w) =>
+    s.replace(
+      new RegExp(`(?![^\\n]{1,${w}}$)([^\\n]{1,${w}})\\s`, "g"),
+      "$1\n"
+    );
+
+  if (isbubble) {
+    data = { type: "carousel", contents: [data] };
+  }
+
+  let height = [];
+  for (let i in data.contents) {
+    let title = data.contents[i].header.contents[0].text;
+    let chapt = data.contents[i].header.contents[1].text;
+
+    //console.log(wraptext(title.replace(/-/g, " ").replace(/\//g, " / "), 17));
+
+    let wraptitlelength =
+      wraptext(title.replace(/-/g, " ").replace(/\//g, " / "), 17).split(
+        /\r\n|\r|\n/
+      ).length * 20;
+    let wrapchaptlength = wraptext(chapt, 27).split(/\r\n|\r|\n/).length * 20;
+
+    if (wraptitlelength == 20) wraptitlelength = 25;
+    if (wrapchaptlength == 20) wrapchaptlength = 25;
+
+    height.push(wraptitlelength + wrapchaptlength);
+  }
+
+  let maxheight = Math.max(...height);
+
+  for (let i = 0; i < data.contents.length; i++) {
+    data.contents[i].header.height = maxheight + "px";
+  }
+
+  return !isbubble ? data : data.contents[0];
 }
 
 /*
