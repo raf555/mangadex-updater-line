@@ -5,7 +5,8 @@ const express = require("express"),
   { Mangadex } = require("mangadex-api"),
   line = require("@line/bot-sdk"),
   axios = require("axios"),
-  NodeCache = require("node-cache");
+  NodeCache = require("node-cache"),
+  mangadexapi = require("./utility/mangadex.js");
 
 const app = express.Router(),
   session_options = {
@@ -31,7 +32,7 @@ const app = express.Router(),
   mclient = new Mangadex();
 
 // bot / site status
-const stat = require(__dirname + "/status");
+const stat = require("./utility");
 const closed = stat.closed;
 const check = stat.checker;
 // api endpoint
@@ -134,11 +135,6 @@ app.get("/", isloggedin, async (req, res) => {
 
 /* front page */
 app.get("/dex", isloggedin, async (req, res) => {
-  if (closed) {
-    res.sendFile(__dirname + "/public/error.html");
-    return false;
-  }
-
   // login
   /*
   try {
@@ -213,25 +209,15 @@ app.get("/dex", isloggedin, async (req, res) => {
             ) {
               ada = true;
             }
-            if (req.query.refresh && req.query.refresh == 1) {
-              if (_manga.get(query)) {
-                searchu += await searchout(
-                  darkmode,
-                  req.session.uid,
-                  search,
-                  true,
-                  ada
-                );
-              }
-            } else {
-              searchu += await searchout(
-                darkmode,
-                req.session.uid,
-                search,
-                false,
-                ada
-              );
-            }
+            searchu += await searchout(
+              darkmode,
+              req.session.uid,
+              search,
+              !!_manga.get(query) &&
+                req.query.refresh &&
+                req.query.refresh == 1,
+              ada
+            );
           }
         } catch (e) {
           if (e.response && e.response.status == 404) {
@@ -273,7 +259,13 @@ app.get("/dex", isloggedin, async (req, res) => {
     q: req.query.q,
     added: add,
     limit: limit,
-    check: check
+    check: check,
+    user: {
+      name: userdb.get(uid).name || "Guest",
+      avatar:
+        userdb.get(uid).pic ||
+        "https://mulder-onions.com/wp-content/uploads/2017/02/White-square.jpg"
+    }
   });
 });
 
@@ -323,7 +315,7 @@ app.get("/api/dex/folunfol/:id", async (req, res) => {
       return false;
     }
 
-    if (!(!_user.get(uid + "." + id) && !_manga.get(id + ".follower." + uid))) {
+    if (!(!_user.get(uid + "." + id) || !_manga.get(id + ".follower." + uid))) {
       // unfollow a manga
       _user.unset(uid + "." + id);
       _manga.unset(id + ".follower." + uid);
@@ -348,7 +340,13 @@ app.get("/api/dex/folunfol/:id", async (req, res) => {
         res.send({ result: false, reason: "max" });
         return false;
       }
-      let following = await ambilfollow();
+      let following;
+      try {
+        following = await ambilfollow();
+      } catch (e) {
+        res.send({ result: false, reason: "Unknown error occured" });
+        return false;
+      }
       let mangafound = following.find(data => data.mangaId == id) != undefined;
       _user.set(uid + "." + id + ".group", "-");
       _manga.set(id + ".follower." + uid, 1);
@@ -413,7 +411,7 @@ app.get("/api/dex/setgroup/:mangid/:grupid", async (req, res) => {
 
     if (
       !(
-        !_user.get(uid + "." + mangid) &&
+        !_user.get(uid + "." + mangid) ||
         !_manga.get(mangid + ".follower." + uid)
       )
     ) {
@@ -483,10 +481,21 @@ app.get("/api/dex/relogin", async (req, res) => {
   res.send({ result: resu });
 });
 
-/* view db */
-app.get("/api/viewdb/:name", async (req, res) => {
+/* admin router */
+app.get("/api/admin/viewdb/:name", async (req, res) => {
   if (req.session.uid && req.session.uid == process.env.admin_id) {
     res.sendFile(__dirname + "/db/" + req.params.name);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+app.get("/api/admin/setpushquota/:quota", async (req, res) => {
+  if (req.session.uid && req.session.uid == process.env.admin_id) {
+    let pushdb = editJsonFile("db/pushlimit.json");
+    pushdb.set("quota", parseInt(req.params.quota));
+    pushdb.save();
+    res.sendStatus(200);
   } else {
     res.sendStatus(403);
   }
@@ -520,22 +529,26 @@ app.get("/dexstatus", async (req, res) => {
 });
 
 async function isloggedin(req, res, next) {
-  try {
-    let data = await login.verify_access_token(req.session.acc_token);
-    next();
-  } catch (e) {
-    switch (req.path) {
-      case "/":
-        req.session.redir = "/";
-        break;
-      case "/dex":
-        req.session.redir = "/dex";
-        if (req.query.q && req.query.q != "") {
-          req.session.redir += "?q=" + req.query.q;
-        }
-        break;
+  if (closed) {
+    res.sendFile(__dirname + "/public/error.html");
+  } else {
+    try {
+      let data = await login.verify_access_token(req.session.acc_token);
+      next();
+    } catch (e) {
+      switch (req.path) {
+        case "/":
+          req.session.redir = "/";
+          break;
+        case "/dex":
+          req.session.redir = "/dex";
+          if (req.query.q && req.query.q != "") {
+            req.session.redir += "?q=" + req.query.q;
+          }
+          break;
+      }
+      res.redirect("/login");
     }
-    res.redirect("/login");
   }
 }
 
@@ -682,9 +695,11 @@ async function searchout(
   let url = "https://mangadex.org/title/" + search.id;
 
   if (fromself && !latest) {
-    return "";
+    latest = [];
+    latest[0] = "01-01-1970 - 00.00";
+    latest[1] = "No latest English chapter found, please unfollow this manga.";
   }
-    
+
   let out =
     '<div class="item list">' +
     '<div class="image">' +
@@ -778,57 +793,23 @@ async function searchout(
 }
 
 function unfolmanga(id) {
-  let _manga = editJsonFile("features/_dexmanga.json");
-  return axios.get(
-    "https://mangadex.org/ajax/actions.ajax.php?function=manga_unfollow&id=" +
-      id +
-      "&type=" +
-      id,
-    {
-      headers: {
-        Cookie: process.env.dex_cookies,
-        "X-Requested-With": "XMLHttpRequest",
-        "user-agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
-      }
-    }
-  );
+  return mangadexapi.unfollowmanga(id);
 }
 
 function folmanga(id) {
-  return axios.get(
-    "https://mangadex.org/ajax/actions.ajax.php?function=manga_follow&id=" +
-      id +
-      "&type=1",
-    {
-      headers: {
-        Cookie: process.env.dex_cookies,
-        "X-Requested-With": "XMLHttpRequest",
-        "user-agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
-      }
-    }
-  );
+  return mangadexapi.followmanga(id);
 }
 
 async function getmanga(id, fromcache = true) {
   if (fromcache) {
     if (myCache.has("manga-" + id)) {
       let out = myCache.get("manga-" + id);
-      //out.cache = true;
       return out;
     }
   }
-  let data = await axios.get(endpoint + "/manga/" + id + "?include=chapters", {
-    headers: {
-      Cookie: process.env.dex_cookies,
-      "X-Requested-With": "XMLHttpRequest",
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
-    }
-  });
-  myCache.set("manga-" + id, data.data.data);
-  return data.data.data;
+  let data = await mangadexapi.getmanga(id);
+  myCache.set("manga-" + id, data);
+  return data;
 }
 
 async function getsearch(q, fromcache = true) {
@@ -848,37 +829,11 @@ async function getsearch(q, fromcache = true) {
 }
 
 async function getgroupname(id) {
-  let grupdb = editJsonFile("db/_dexgroup.json");
-  if (grupdb.get(id.toString())) {
-    return grupdb.get(id.toString()).name;
-  }
-  let data = await axios.get(endpoint + "/group/" + id, {
-    headers: {
-      Cookie: process.env.dex_cookies,
-      "X-Requested-With": "XMLHttpRequest",
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
-    }
-  });
-  myCache.set("group-" + id, data.data.data);
-  grupdb.set(id.toString() + ".name", data.data.data.name);
-  grupdb.save();
-  return data.data.data.name;
+  return await mangadexapi.getgroupname(id);
 }
 
 async function ambilfollow() {
-  let tes = await axios.get(
-    endpoint + "/user/" + process.env.dex_uid + "/followed-manga",
-    {
-      headers: {
-        Cookie: process.env.dex_cookies,
-        "X-Requested-With": "XMLHttpRequest",
-        "user-agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
-      }
-    }
-  );
-  return tes.data.data;
+  return await mangadexapi.getfollowing();
 }
 
 function convertTZ(date, tzString) {

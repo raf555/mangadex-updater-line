@@ -4,7 +4,8 @@ const express = require("express"),
   editJsonFile = require("edit-json-file"),
   axios = require("axios"),
   { Mangadex } = require("mangadex-api"),
-  cron = require("node-cron");
+  cron = require("node-cron"),
+  mangadexapi = require("./utility/mangadex.js");
 
 const config = {
     channelAccessToken: process.env.acc_token,
@@ -22,10 +23,9 @@ app.post("/callback", line.middleware(config), (req, res) => {
     });
 });
 
-const stat = require(__dirname + "/status");
+const stat = require("./utility");
 const checker = stat.checker;
 const closed = stat.closed;
-const endpoint = stat.endpoint;
 
 // check manga every minute
 cron.schedule("* * * * *", async () => {
@@ -41,7 +41,7 @@ cron.schedule("* * * * *", async () => {
     if (e.response) {
       log += " with error code " + e.response.status;
     }
-    //console.log(e);
+    console.log(log);
   }
 });
 
@@ -254,10 +254,10 @@ async function followevent(event) {
       "• !dex\n=> to open your following list latest chapter update.\n" +
       "• !dex manga_name\n=> to open your following list with manga name (e.g. !dex kubo-san).\n" +
       "• !dex manga_name -chapter num\n=> to open your following list with manga name and certain chapter (e.g. !dex kubo-san -chapter 20).\n\n" +
-      (event.source.userId == process.env.admin_id
+      (isAdmin(event.source.userId)
         ? "• !dex2\n=> to see all following list in the account.\n\n"
         : "") +
-      "• !edit (deprecated)\n=> to edit and see your following list.\n\n" +
+      "• !edit \n=> to edit and see your following list.\n\n" +
       "If you find any problem, please make an issue at https://github.com/raf555/mangadex-updater-line",
     quickReply: {
       items: [
@@ -297,17 +297,18 @@ async function parsemessage(event) {
     if (added) {
       switch (cmd) {
         case "dex":
-          if (!closed) {
+          if (!closed || (closed && isAdmin(event.source.userId))) {
             return dex(event);
           } else {
             return reply(event, {
               type: "text",
               text:
-                "The mangadex updater will be turned off until mangadex is up again, sorry for the inconvenience.\n\nhttps://twitter.com/MangaDex/status/1366590814844055552"
+                "The mangadex updater will be turned off until mangadex is up again, sorry for the inconvenience." +
+                "\n\nhttps://mangadex.org/index.html"
             });
           }
         case "dex2":
-          return event.source.userId == process.env.admin_id
+          return isAdmin(event.source.userId)
             ? dex(event, true)
             : Promise.resolve(null);
         case "edit":
@@ -767,19 +768,7 @@ function createdexbubble(data, groupdata) {
 }
 
 async function getuserfollowing() {
-  let data = await axios.get(
-    endpoint + "/user/" + process.env.dex_uid + "/followed-updates",
-    {
-      headers: {
-        Cookie: process.env.dex_cookies,
-        "X-Requested-With": "XMLHttpRequest",
-        "user-agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
-      }
-    }
-  );
-
-  return data.data.data;
+  return await mangadexapi.getfollowing();
 }
 
 /*
@@ -861,6 +850,10 @@ function pubDate(date) {
     ];
 
   return parts.join(" ");
+}
+
+function isAdmin(id) {
+  return id == process.env.admin_id;
 }
 
 module.exports = app;

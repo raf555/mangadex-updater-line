@@ -1,26 +1,57 @@
+<style>
+  iframe {
+    border: none;
+    width: calc(100% + 2em);
+    margin: 0em -1em;
+    height: 500px;
+  }
+</style>
+<script src="https://fomantic-ui.com/examples/assets/library/iframe.js"></script>
+<script>
+  $("iframe").iFrameResize({
+    autoResize: true,
+    checkOrigin: false,
+    heightCalculationMethod: "bodyScroll"
+  });
+</script>
 <center>
   <h2>
-    Failed to login to
-    <a href="https://mangadex.org" target="_blank">Mangadex</a><br />
-    Mangadex is having a maintenance.
-  <br>We will open this after mangadex is fixed
+    Mangadex Notifier for LINE will be closed until Mangadex is up again.
   </h2>
+  <br />
+  More information at
+  <a href="https://mangadex.org/index.html" target="_blank">Mangadex</a> and
+  <a
+    href="https://twitter.com/MangaDex/status/1373740982483705867"
+    target="_blank"
+    >Twitter</a
+  >
   <br /><br />
-  <blockquote class="twitter-tweet" data-theme="dark">
+  <hr />
+  <iframe src="https://mangadex.org/index.html" width="100%" height="500">
+  </iframe>
+  <br /><br />
+  <hr />
+  <blockquote class="twitter-tweet">
     <p lang="en" dir="ltr">
-      Seeeeeems like the webserver is completely dead at the moment and will be
-      that way for... optimistically, the next 6-10 hours.<br /><br />Mondays
-      really are the best days of the week 😊
-      <a href="https://t.co/p1PGmlEJd6">pic.twitter.com/p1PGmlEJd6</a>
+      After a consensus, we decided to focus our efforts towards MangaDex v5. We
+      will remain offline until the new site&#39;s codebase is fully rewritten.
+      We expect to take 2+ weeks for a release with basic functions
+      (read/upload/follow).
+      <a href="https://t.co/57sUN1D5W8">pic.twitter.com/57sUN1D5W8</a>
     </p>
     &mdash; MangaDex (@MangaDex)
     <a
-      href="https://twitter.com/MangaDex/status/1366590814844055552?ref_src=twsrc%5Etfw"
-      >March 2, 2021</a
+      href="https://twitter.com/MangaDex/status/1373740982483705867?ref_src=twsrc%5Etfw"
+      >March 21, 2021</a
     >
   </blockquote>
-  <br>
-  <a
+  <script
+    async
+    src="https://platform.twitter.com/widgets.js"
+    charset="utf-8"
+  ></script>
+  <!--<a
     class="twitter-timeline"
     data-width="500"
     data-height="500"
@@ -32,5 +63,5 @@
     async
     src="https://platform.twitter.com/widgets.js"
     charset="utf-8"
-  ></script>
+  ></script>-->
 </center>

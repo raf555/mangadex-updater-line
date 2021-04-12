@@ -49,10 +49,15 @@
       <script src='https://unpkg.com/nprogress@0.2.0/nprogress.js'></script>
       <link rel='stylesheet' href='https://unpkg.com/nprogress@0.2.0/nprogress.css'/>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+      <script>
+        let setting = {
+          load: false
+        }
+      </script>
       <% if(added) { %><script src="/dex.js"></script><% } %>
    </head>
    <body>
-      <%- include('global/menu')-%>
+      <%- include('global/menu', {rightmenu: true, name: user.name, avatar: user.avatar })-%>
          <div class="ui main text container">
             <!--<div class="ui breadcrumb">
                <a class="section" href="/">Home</a>
@@ -66,30 +71,15 @@
                   Mangadex Update Notifier <i class="linechat icon"></i>
                  <small><a class="ui infomodal black circular label" title="What is this?">?</a></small>
                   <div class="sub header">Customize your manga following list and get message every time there is an update!
-                   <br><small>Mangadex status: <a class="dexload" title="Click to refresh"></a></small>
+                   <br><small>Mangadex status: <a class="dexload" title="Click to refresh">-</a></small>
                   </div>
                </div>
             </h2>
             <div class="ui divider"></div>
            <% if(!check) { %><div class="ui tiny warning message"><i class="announcement close icon"></i><div class="header">Announcement</div><p>Mangadex is now having a hard time, so you might get an error when searching/following manga. For more information, please go ahead to <a href="https://twitter.com/MangaDex/status/1366590814844055552" target="_blank">Mangadex Twitter</a></p></div><% } %>
-           <!--<div class="ui small warning message">
-               <i class="announcement close icon"></i>
-               <div class="header">
-                  Announcement
-               </div>
-               <p>Mangadex is now having a hard time (again), so you might be getting an error when searching / following manga.
-                For more information, please go ahead to 
-             <a href="https://twitter.com/MangaDex/status/1368342721308557313" target="_blank">Mangadex Twitter</a>.</p>
-            </div>-->
-           <!--<div class="ui tiny info message">
-               <i class="announcement close icon"></i>
-               <div class="header">
-                  New Feature
-               </div>
-               <p>If you are familiar with Mangadex translation group, now you can choose to receive update from certain group from each manga.
-             <br>How: Click <b>Advanced Option</b> label under last update label and choose the group.</p>
-            </div>-->
-            <% if(added) { %>
+<%- include('global/announcement_info')-%>
+<%- include('global/announcement_warning')-%>          
+           <% if(added) { %>
             <div class="ui middle aligned divided list">
                <div class="item">
                   <div class="floated content">
@@ -106,6 +96,7 @@
             <div class="ui segment output">
                <div class="ui divided items">
                   <%-out %>
+                 <noscript>Please allow/enable Javascript before using this site</noscript>
                </div>
             </div>
             <div class="ui middle aligned divided list">
@@ -156,6 +147,10 @@
             <li>If you find any problem, please make an issue <a href="https://github.com/raf555/mangadex-updater-line" target="_blank">here</a>.</li>
             </ol>
           </p>
+        </div>
+      </div>
+      <div class="ui basic modal" id="loading">
+        <div class="ui large loader content">
         </div>
       </div>
    </body>
