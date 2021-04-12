@@ -826,4 +826,8 @@ function isAdmin(id) {
   return util.isAdmin(id);
 }
 
+function pubDate(d) {
+  return util.pubDate(d);
+}
+
 module.exports = app;
