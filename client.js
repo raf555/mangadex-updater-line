@@ -44,6 +44,7 @@ const limit = 10;
 // login
 mclient.agent.login(process.env.dex_id, process.env.dex_pw, false);
 
+/* node session */
 app.use(session(session_options));
 
 /* for frontend js */
@@ -51,14 +52,13 @@ app.get("/dex.js", function(req, res) {
   res.sendFile(__dirname + "/public/static/dex.js");
 });
 
+
+/* admin router */
+app.use(require("./admin"));
+
 /* login router */
 app.use("/login", login.auth());
-app.get("/logout", isloggedin, function(req, res) {
-  login.revoke_access_token(req.session.acc_token).then(() => {
-    req.session.destroy();
-  });
-  res.redirect("/login");
-});
+
 app.use(
   "/login_callback",
   login.callback(
@@ -82,9 +82,16 @@ app.use(
   )
 );
 
+app.get("/logout", isloggedin, function(req, res) {
+  login.revoke_access_token(req.session.acc_token).then(() => {
+    req.session.destroy();
+  });
+  res.redirect("/login");
+});
+
 /* dashboard */
 app.get("/", isloggedin, async (req, res) => {
-  if (req.session.uid == process.env.admin_id) {
+  if (util.isAdmin(req.session.uid)) {
     let db = editJsonFile("db/_dexuser.json");
     let db2 = editJsonFile("db/_dexmanga.json");
     let data = Object.keys(db.get());
@@ -479,26 +486,6 @@ app.get("/api/dex/relogin", async (req, res) => {
     }
   }
   res.send({ result: resu });
-});
-
-/* admin router */
-app.get("/api/admin/viewdb/:name", async (req, res) => {
-  if (req.session.uid && req.session.uid == process.env.admin_id) {
-    res.sendFile(__dirname + "/db/" + req.params.name);
-  } else {
-    res.sendStatus(403);
-  }
-});
-
-app.get("/api/admin/setpushquota/:quota", async (req, res) => {
-  if (req.session.uid && req.session.uid == process.env.admin_id) {
-    let pushdb = editJsonFile("db/pushlimit.json");
-    pushdb.set("quota", parseInt(req.params.quota));
-    pushdb.save();
-    res.sendStatus(200);
-  } else {
-    res.sendStatus(403);
-  }
 });
 
 /* mangadex status */
