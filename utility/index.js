@@ -1,6 +1,10 @@
+const editJsonFile = require("edit-json-file"),
+  config = editJsonFile(__dirname + "/config.json");
+
 module.exports = {
-  closed: true, // any request to mangadex from front web or bot, true/false
-  checker: false, // auto check: true: on, false: off
+  closed: config.get("closed"), // any request to mangadex from front web or bot, true/false
+  checker: config.get("checker"), // auto check: true: on, false: off
+  limit: config.get("limit"), // manga following limit
   endpoint: "https://api.mangadex.org/v2/", // endpoint url
 
   // method

@@ -6,7 +6,8 @@ const express = require("express"),
   line = require("@line/bot-sdk"),
   axios = require("axios"),
   NodeCache = require("node-cache"),
-  mangadexapi = require("./utility/mangadex.js");
+  mangadexapi = require("./utility/mangadex.js"),
+  util = require("./utility");
 
 const app = express.Router(),
   session_options = {
@@ -29,19 +30,16 @@ const app = express.Router(),
     //prompt: "consent",
     bot_prompt: "normal"
   }),
-  mclient = new Mangadex();
+  mclient = new Mangadex(),
+  // bot / site status
+  closed = util.closed,
+  check = util.checker,
+  // api endpoint
+  endpoint = util.endpoint,
+  // manga limit
+  limit = util.limit;
 
-// bot / site status
-const util = require("./utility");
-const closed = util.closed;
-const check = util.checker;
-// api endpoint
-const endpoint = util.endpoint;
-
-// manga limit
-const limit = 10;
-
-// login
+// mangadex login
 mclient.agent.login(process.env.dex_id, process.env.dex_pw, false);
 
 /* node session */
@@ -51,7 +49,6 @@ app.use(session(session_options));
 app.get("/dex.js", function(req, res) {
   res.sendFile(__dirname + "/public/static/dex.js");
 });
-
 
 /* admin router */
 app.use(require("./admin"));
@@ -276,6 +273,8 @@ app.get("/dex", isloggedin, async (req, res) => {
   });
 });
 
+/************************************** api ********************************************/
+
 /* follow / unfollow manga */
 app.get("/api/dex/folunfol/:id", async (req, res) => {
   if (!req.get("referer")) {
@@ -488,6 +487,8 @@ app.get("/api/dex/relogin", async (req, res) => {
   res.send({ result: resu });
 });
 
+/************************************* other **************************************/
+
 /* mangadex status */
 app.get("/dexstatus", async (req, res) => {
   let dex = true;
@@ -514,6 +515,8 @@ app.get("/dexstatus", async (req, res) => {
   }
   res.send({ result: dex && api, fail: fail });
 });
+
+/************************************* methods **************************************/
 
 async function isloggedin(req, res, next) {
   if (closed) {
