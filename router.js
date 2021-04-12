@@ -32,11 +32,11 @@ const app = express.Router(),
   mclient = new Mangadex();
 
 // bot / site status
-const stat = require("./utility");
-const closed = stat.closed;
-const check = stat.checker;
+const util = require("./utility");
+const closed = util.closed;
+const check = util.checker;
 // api endpoint
-const endpoint = stat.endpoint;
+const endpoint = util.endpoint;
 
 // manga limit
 const limit = 10;
@@ -837,28 +837,20 @@ async function ambilfollow() {
 }
 
 function convertTZ(date, tzString) {
-  return new Date(
-    (typeof date === "string" ? new Date(date) : date).toLocaleString("en-US", {
-      timeZone: tzString
-    })
-  );
+  return util.convertTZ(date, tzString);
 }
 
 // convert Date to string
 function dateTodate(d) {
-  let tgl = d.getDate() < 10 ? "0" + d.getDate() : d.getDate();
-  let mon = d.getMonth() + 1 < 10 ? "0" + (d.getMonth() + 1) : d.getMonth() + 1;
-  return tgl + "-" + mon + "-" + d.getFullYear();
+  return util.dateTodate(d);
 }
 
 function dateTohour(d) {
-  let jam = d.getHours() < 10 ? "0" + d.getHours() : d.getHours();
-  let mnt = d.getMinutes() < 10 ? "0" + d.getMinutes() : d.getMinutes();
-  return jam + "." + mnt;
+  return util.dateTohour(d);
 }
 
 function datetostr(d) {
-  return dateTodate(d) + " - " + dateTohour(d);
+  return util.datetostr(d);
 }
 
 module.exports = app;

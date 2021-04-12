@@ -23,9 +23,9 @@ app.post("/callback", line.middleware(config), (req, res) => {
     });
 });
 
-const stat = require("./utility");
-const checker = stat.checker;
-const closed = stat.closed;
+const util = require("./utility");
+const checker = util.checker;
+const closed = util.closed;
 
 // check manga every minute
 cron.schedule("* * * * *", async () => {
@@ -806,54 +806,24 @@ function parseparam(param) {
 
 // convert timezone
 function convertTZ(date, tzString) {
-  return new Date(
-    (typeof date === "string" ? new Date(date) : date).toLocaleString("en-US", {
-      timeZone: tzString
-    })
-  );
+  return util.convertTZ(date, tzString);
 }
 
 // convert Date to string
 function dateTodate(d) {
-  let tgl = d.getDate() < 10 ? "0" + d.getDate() : d.getDate();
-  let mon = d.getMonth() + 1 < 10 ? "0" + (d.getMonth() + 1) : d.getMonth() + 1;
-  return tgl + "-" + mon + "-" + d.getFullYear();
+  return util.dateTodate(d);
 }
 
 function dateTohour(d) {
-  let jam = d.getHours() < 10 ? "0" + d.getHours() : d.getHours();
-  let mnt = d.getMinutes() < 10 ? "0" + d.getMinutes() : d.getMinutes();
-  return jam + "." + mnt;
+  return util.dateTohour(d);
 }
 
 function datetostr(d, jam = true) {
-  let out = dateTodate(d);
-  if (jam) {
-    out += " " + dateTohour(d);
-  }
-  return out;
-}
-
-// date to rss pubdate
-// reference : https://gist.github.com/samhernandez/5260558
-function pubDate(date) {
-  var pieces = date.toString().split(" "),
-    offsetTime = pieces[5].match(/[-+]\d{4}/),
-    offset = offsetTime ? offsetTime : pieces[5],
-    parts = [
-      pieces[0] + ",",
-      pieces[2],
-      pieces[1],
-      pieces[3],
-      pieces[4],
-      offset
-    ];
-
-  return parts.join(" ");
+  return util.datetostr(d, jam);
 }
 
 function isAdmin(id) {
-  return id == process.env.admin_id;
+  return util.isAdmin(id);
 }
 
 module.exports = app;
