@@ -50,6 +50,7 @@ async function getUpdate2() {
   console.log("1 min mangadex has passed");
 
   const db = editJsonFile("db/_dexmanga.json");
+  const latest = editJsonFile("db/_dexlatest.json");
 
   let data = await getuserfollowing();
   let chapters = data.chapters;
@@ -57,16 +58,16 @@ async function getUpdate2() {
 
   for (let i = 0; i < dbo.length; i++) {
     if (Object.keys(db.get(dbo[i]).follower).length > 0) {
-      if (!db.get(dbo[i]).latest) {
-        db.set(dbo[i] + ".latest", "");
+      if (!latest.get(dbo[i]).latest) {
+        latest.set(dbo[i] + ".latest", "");
       }
 
       for (let j = 0; j < chapters.length; j++) {
         if (chapters[j].mangaId.toString() == dbo[i]) {
           let mangdate = pubDate(new Date(chapters[j].timestamp * 1000));
-          let temp = db.get(dbo[i]).latest;
-          if (db.get(dbo[i]).latest != mangdate) {
-            db.set(dbo[i] + ".latest", mangdate);
+          let temp = latest.get(dbo[i]).latest;
+          if (latest.get(dbo[i]).latest != mangdate) {
+            latest.set(dbo[i] + ".latest", mangdate);
             console.log("Manga with id " + dbo[i] + " is just updated");
             try {
               // refresh cache
@@ -82,8 +83,8 @@ async function getUpdate2() {
                 cache.data
               );
             } catch (e) {
-              //db.set(dbo[i] + ".latest", temp);
-              //db.save();
+              //latest.set(dbo[i] + ".latest", temp);
+              //latest.save();
               console.log(
                 "Update manga with id " +
                   dbo[i] +

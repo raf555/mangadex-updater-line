@@ -25,7 +25,8 @@ module.exports = {
     return parts.join(" ");
   },
   isAdmin: id => {
-    return id == process.env.admin_id;
+    let db = editJsonFile("db/user.json");
+    return !!db.get(id) && !!db.get(id).role && db.get(id).role === "admin";
   },
   convertTZ: (date, tzString) => {
     return new Date(
